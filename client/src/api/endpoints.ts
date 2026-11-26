@@ -12,7 +12,6 @@ import type {
   RegisterResponse,
   Overview,
   Station,
-  Tariff,
   Ticket,
   UserRow,
   Vehicle,
@@ -21,6 +20,7 @@ import type {
 const get = <T>(url: string, params?: object) => api.get<T>(url, { params }).then((r) => r.data);
 const post = <T>(url: string, body?: object) => api.post<T>(url, body).then((r) => r.data);
 const patch = <T>(url: string, body?: object) => api.patch<T>(url, body).then((r) => r.data);
+const put = <T>(url: string, body?: object) => api.put<T>(url, body).then((r) => r.data);
 
 export const authApi = {
   login: (body: { email: string; password: string }) => post<AuthResponse>('/auth/login', body),
@@ -41,6 +41,7 @@ export const stationApi = {
   cities: () => get<string[]>('/stations/cities'),
   create: (body: object) => post<Station>('/stations', body),
   update: (id: number, body: object) => patch<Station>(`/stations/${id}`, body),
+  setPrices: (id: number, body: object) => put<Station>(`/stations/${id}/prices`, body),
 };
 
 export const chargerApi = {
@@ -95,12 +96,6 @@ export const userApi = {
   requests: () => get<UserRow[]>('/users/requests'),
   approve: (id: number) => patch<UserRow>(`/users/${id}/approve`),
   reject: (id: number, reason: string) => patch<UserRow>(`/users/${id}/reject`, { reason }),
-};
-
-export const tariffApi = {
-  list: () => get<Tariff[]>('/tariffs'),
-  create: (body: object) => post<Tariff>('/tariffs', body),
-  update: (id: number, body: object) => patch<Tariff>(`/tariffs/${id}`, body),
 };
 
 export const overviewApi = {

@@ -4,13 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Card, CardContent, Container, Grid, InputBase, Paper, Stack, Typography } from '@mui/material';
 import SearchRounded from '@mui/icons-material/SearchRounded';
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded';
-import { stationApi, tariffApi } from '../../api/endpoints';
+import { stationApi } from '../../api/endpoints';
 import FloatingTiles from '../../components/public/FloatingTiles';
 import FindChargers from '../../components/public/FindChargers';
 import { CheckList, Limitations, SectionHeading, SpecTable, Steps, SupportChannels } from '../../components/public/Blocks';
 import { BUSINESS_RULES_TEXT, FAQS, ROLE_FEATURES } from './content';
 import { brand } from '../../theme/palette';
-import { money } from '../../utils/format';
 
 const sectionSx = { py: { xs: 7, md: 10 }, scrollMarginTop: '80px' };
 
@@ -20,7 +19,6 @@ export default function HomePage() {
   const [query, setQuery] = useState('');
   const [city, setCity] = useState('');
   const { data: stations = [] } = useQuery({ queryKey: ['stations', 'public', 'all'], queryFn: () => stationApi.search({}) });
-  const { data: tariffs = [] } = useQuery({ queryKey: ['tariffs'], queryFn: tariffApi.list });
 
   const chargers = stations.flatMap((s) => s.chargers);
   const cities = new Set(stations.map((s) => s.city)).size;
@@ -137,7 +135,7 @@ export default function HomePage() {
                 <Stack spacing={2.5}>
                   {[
                     ['1. Request', 'Sign up with your business name. The administrator reviews and approves your account.'],
-                    ['2. List', 'Add each station with address, hours and tariff, then add chargers that meet the spec for their type.'],
+                    ['2. List', 'Add each station with address and hours, then add chargers that meet the spec for their type and set your price per kWh for each charging type.'],
                     ['3. Operate', 'See bookings, live sessions and invoices at your stations. Report faults and the manager sends a technician.'],
                   ].map(([title, text]) => (
                     <Box key={title} sx={{ p: 2.5, borderRadius: 4, bgcolor: 'rgba(255,255,255,.07)' }}>
@@ -200,7 +198,7 @@ export default function HomePage() {
                 <CardContent sx={{ p: 3 }}>
                   <Typography variant="h6">How your bill is calculated</Typography>
                   <Typography color="text.secondary" sx={{ mt: 1 }}>
-                    Example tariff: ₹18/kWh off-peak, ₹24/kWh peak (18:00–22:00), idle ₹5/min after {BUSINESS_RULES_TEXT.idleGrace} free.
+                    Example prices: ₹18/kWh normal, ₹24/kWh peak (18:00–22:00), idle ₹5/min after {BUSINESS_RULES_TEXT.idleGrace} free.
                   </Typography>
                   <Stack spacing={1} sx={{ mt: 2 }}>
                     {[
@@ -219,18 +217,9 @@ export default function HomePage() {
                       <Typography variant="h6">₹525.10</Typography>
                     </Stack>
                   </Stack>
-                  {tariffs.length > 0 && (
-                    <Box sx={{ mt: 3 }}>
-                      <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                        Live tariffs
-                      </Typography>
-                      {tariffs.map((t) => (
-                        <Typography key={t.id} variant="body2" color="text.secondary">
-                          {t.name}: {money(t.energyRate)} off-peak · {money(t.peakRate)} peak ({t.peakStartHour}:00–{t.peakEndHour}:00) · idle {money(t.idleFeePerMin)}/min
-                        </Typography>
-                      ))}
-                    </Box>
-                  )}
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                    Each station owner sets their own prices per charging type. You see them on every station before you book.
+                  </Typography>
                 </CardContent>
               </Card>
             </Grid>

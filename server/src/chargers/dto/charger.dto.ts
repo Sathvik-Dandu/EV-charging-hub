@@ -1,6 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsEnum, IsInt, IsNumber, Matches, Max, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, Matches, Max, Min } from 'class-validator';
 import { ConnectorType } from '../../generated/prisma/enums';
+import { BUSINESS_RULES } from '../../common/business-rules';
 
 export class CreateChargerDto {
   @ApiProperty({ example: 'BLR-005-C1' })
@@ -20,6 +21,20 @@ export class CreateChargerDto {
   @ApiProperty({ example: 1 })
   @IsInt()
   stationId: number;
+
+  @ApiPropertyOptional({ example: 18, description: 'Needed for the first charger of this type at the station' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(BUSINESS_RULES.MAX_PRICE_PER_KWH)
+  pricePerKwh?: number;
+
+  @ApiPropertyOptional({ example: 24 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(BUSINESS_RULES.MAX_PRICE_PER_KWH)
+  peakPricePerKwh?: number;
 }
 
 export class ChargerActiveDto {

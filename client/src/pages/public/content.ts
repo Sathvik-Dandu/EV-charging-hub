@@ -10,7 +10,7 @@ export const BUSINESS_RULES_TEXT = {
 export const FAQS = [
   {
     q: 'How do I list my charging station?',
-    a: 'Sign up as a station owner. Once an administrator approves your request, sign in and add your stations and chargers. They appear in search straight away.',
+    a: 'Sign up as a station owner. Once an administrator approves your request, sign in and add your stations, chargers and prices. They appear in search straight away.',
   },
   {
     q: 'Do I need an account to find a charger?',
@@ -26,7 +26,7 @@ export const FAQS = [
   },
   {
     q: 'How is peak pricing applied?',
-    a: 'Each station has a tariff with a peak window. Energy delivered inside that window is billed at the peak rate, and the rest at the off-peak rate, minute by minute.',
+    a: 'Each station owner sets a price per kWh for every charging type, plus a higher peak-hour price. Energy delivered during peak hours is billed at the peak price and the rest at the normal price, minute by minute.',
   },
   {
     q: 'What if a charger is faulty?',
@@ -45,7 +45,7 @@ export const ROLE_FEATURES = [
   },
   {
     role: 'Station owners',
-    items: ['Sign up and get approved by the administrator', 'Add your stations and chargers', 'See bookings, sessions and invoices at your stations; run on-site sessions'],
+    items: ['Sign up and get approved by the administrator', 'Add your stations, chargers and prices per charging type', 'See bookings, sessions and invoices at your stations; run on-site sessions'],
   },
   {
     role: 'Maintenance technicians',
@@ -53,7 +53,7 @@ export const ROLE_FEATURES = [
   },
   {
     role: 'Network administrators',
-    items: ['Review station owner and technician sign-up requests', 'Manage users, roles and tariffs', 'Oversee every station and charger'],
+    items: ['Review station owner and technician sign-up requests', 'Manage users and roles', 'Oversee every station and charger'],
   },
   {
     role: 'Operations managers',

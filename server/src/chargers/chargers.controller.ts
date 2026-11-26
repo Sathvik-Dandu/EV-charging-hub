@@ -22,13 +22,13 @@ export class ChargersController {
     return this.chargers.findAll(user);
   }
 
-  @Can('chargers:manage')
+  @Can('chargers:add')
   @Post()
   create(@Body() dto: CreateChargerDto, @CurrentUser() user: AuthUser) {
     return this.chargers.create(dto, user);
   }
 
-  @Can('chargers:manage')
+  @Can('chargers:switch')
   @Patch(':id/active')
   setActive(@Param('id', ParseIntPipe) id: number, @Body() dto: ChargerActiveDto, @CurrentUser() user: AuthUser) {
     return this.chargers.setActive(id, dto.isActive, user);

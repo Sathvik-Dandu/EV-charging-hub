@@ -7,7 +7,6 @@ import ReceiptLongOutlined from '@mui/icons-material/ReceiptLongOutlined';
 import DirectionsCarOutlined from '@mui/icons-material/DirectionsCarOutlined';
 import BuildOutlined from '@mui/icons-material/BuildOutlined';
 import GroupOutlined from '@mui/icons-material/GroupOutlined';
-import PriceChangeOutlined from '@mui/icons-material/PriceChangeOutlined';
 import ForumOutlined from '@mui/icons-material/ForumOutlined';
 import HowToRegOutlined from '@mui/icons-material/HowToRegOutlined';
 import TableChartOutlined from '@mui/icons-material/TableChartOutlined';
@@ -34,7 +33,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Reports', path: '/reports', icon: TableChartOutlined, permission: 'reports:view' },
   { label: 'Help & support', path: '/enquiries', icon: ForumOutlined, permission: 'enquiries:view', labels: { MANAGER: 'Enquiries' } },
   { label: 'Users', path: '/users', icon: GroupOutlined, permission: 'users:manage' },
-  { label: 'Tariffs', path: '/tariffs', icon: PriceChangeOutlined, permission: 'tariffs:manage' },
 ];
 
 export const navLabel = (item: NavItem, role: Role) => item.labels?.[role] ?? item.label;

@@ -48,7 +48,7 @@ export default function InvoicesPage() {
 
   return (
     <>
-      <PageHeader title="Invoices" subtitle="Energy-based billing with peak-hour tariff, idle fee and GST" />
+      <PageHeader title="Invoices" subtitle="Energy-based billing with peak-hour prices, idle fee and GST" />
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 4 }}>
           <StatCard title="Total billed" value={money(sum(invoices))} icon={<CurrencyRupeeRounded />} caption={`${invoices.length} invoices`} />
@@ -86,7 +86,7 @@ function InvoiceDialog({ invoice, canPay, onClose }: { invoice: Invoice | null; 
 
   if (!invoice) return null;
   const s = invoice.session;
-  const tariff = s?.charger.station.tariff;
+  const rate = (cost: number, kwh: number) => money(kwh > 0 ? cost / kwh : 0);
   const line = (k: string, v: string, bold = false) => (
     <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
       <Typography color={bold ? 'text.primary' : 'text.secondary'} sx={{ fontWeight: bold ? 700 : 400 }}>
@@ -111,8 +111,8 @@ function InvoiceDialog({ invoice, canPay, onClose }: { invoice: Invoice | null; 
           {line('Vehicle', s?.vehicle.registrationNo ?? '')}
           {s?.booking && line('Booking', s.booking.reference)}
           <Divider sx={{ my: 1 }} />
-          {line(`Off-peak ${invoice.offPeakKwh} kWh × ${money(tariff?.energyRate ?? 0)}`, money(invoice.energyCost))}
-          {line(`Peak ${invoice.peakKwh} kWh × ${money(tariff?.peakRate ?? 0)}`, money(invoice.peakCost))}
+          {line(`Normal hours ${invoice.offPeakKwh} kWh × ${rate(invoice.energyCost, invoice.offPeakKwh)}`, money(invoice.energyCost))}
+          {line(`Peak hours ${invoice.peakKwh} kWh × ${rate(invoice.peakCost, invoice.peakKwh)}`, money(invoice.peakCost))}
           {line(`Idle fee (${s?.idleMinutes ?? 0} min, 10 free)`, money(invoice.idleFee))}
           {line('GST 18%', money(invoice.taxAmount))}
           <Divider sx={{ my: 1 }} />

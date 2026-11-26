@@ -25,6 +25,7 @@ import PlaceRounded from '@mui/icons-material/PlaceRounded';
 import ScheduleRounded from '@mui/icons-material/ScheduleRounded';
 import ReportProblemOutlined from '@mui/icons-material/ReportProblemOutlined';
 import PowerSettingsNewRounded from '@mui/icons-material/PowerSettingsNewRounded';
+import CurrencyRupeeRounded from '@mui/icons-material/CurrencyRupeeRounded';
 import { useAppSelector } from '../app/store';
 import { chargerApi, stationApi } from '../api/endpoints';
 import type { Charger, ConnectorType, Station } from '../api/types';
@@ -32,17 +33,20 @@ import { CONNECTORS, connectorLabel } from '../config/connectors';
 import { can } from '../config/permissions';
 import { chargerStatusColors } from '../theme/palette';
 import { money } from '../utils/format';
+import { peakHoursText, priceFor } from '../utils/prices';
 import PageHeader from '../components/common/PageHeader';
 import StatusChip from '../components/common/StatusChip';
 import BookSlotDialog from '../components/dialogs/BookSlotDialog';
 import ReportFaultDialog from '../components/dialogs/ReportFaultDialog';
-import { AddChargerDialog, AddStationDialog } from '../components/dialogs/StationDialogs';
+import { AddChargerDialog, AddStationDialog, PricesDialog } from '../components/dialogs/StationDialogs';
 
 export default function StationsPage() {
   const role = useAppSelector((s) => s.auth.user!.role);
   const isManager = can(role, 'stations:edit');
   const canAddStation = can(role, 'stations:create');
-  const canAddCharger = can(role, 'chargers:manage');
+  const canAddCharger = can(role, 'chargers:add');
+  const canSwitchCharger = can(role, 'chargers:switch');
+  const canSetPrices = can(role, 'prices:manage');
   const isOwner = role === 'STATION_OWNER';
   const canBook = can(role, 'bookings:create');
   const canReport = can(role, 'tickets:create');
@@ -53,6 +57,7 @@ export default function StationsPage() {
   const [faultOpen, setFaultOpen] = useState(false);
   const [addStation, setAddStation] = useState(false);
   const [addChargerTo, setAddChargerTo] = useState<Station | null>(null);
+  const [pricesFor, setPricesFor] = useState<Station | null>(null);
 
   const { data: cities = [] } = useQuery({ queryKey: ['cities'], queryFn: stationApi.cities });
   const { data: stations, isLoading } = useQuery({ queryKey: ['stations', filters], queryFn: () => stationApi.search({ ...filters, manage: isManager }) });
@@ -168,8 +173,7 @@ export default function StationsPage() {
                   <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                     <ScheduleRounded sx={{ fontSize: 16 }} />
                     <Typography variant="body2">
-                      {station.opensAt === '00:00' && station.closesAt === '23:59' ? 'Open 24 hours' : `${station.opensAt} – ${station.closesAt}`} · {station.tariff.name}{' '}
-                      {money(station.tariff.energyRate)}/kWh
+                      {station.opensAt === '00:00' && station.closesAt === '23:59' ? 'Open 24 hours' : `${station.opensAt} – ${station.closesAt}`} · Peak {peakHoursText(station)}
                     </Typography>
                   </Stack>
                   {role === 'ADMIN' && (
@@ -193,6 +197,7 @@ export default function StationsPage() {
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {connectorLabel(charger.connectorType)} · {charger.powerKw} kW
+                          {priceFor(station, charger.connectorType) && ` · ${money(priceFor(station, charger.connectorType)!.pricePerKwh)}/kWh`}
                         </Typography>
                       </Box>
                       <StatusChip value={charger.status} />
@@ -220,7 +225,7 @@ export default function StationsPage() {
                           </IconButton>
                         </Tooltip>
                       )}
-                      {canAddCharger && (
+                      {canSwitchCharger && (
                         <Tooltip title={charger.isActive ? 'Deactivate charger' : 'Activate charger'}>
                           <IconButton size="small" aria-label="toggle charger" onClick={() => toggleCharger.mutate(charger)} color={charger.isActive ? 'default' : 'primary'}>
                             <PowerSettingsNewRounded fontSize="small" />
@@ -230,10 +235,19 @@ export default function StationsPage() {
                     </Stack>
                   ))}
                 </Stack>
-                {canAddCharger && (
-                  <Button size="small" startIcon={<AddRounded />} sx={{ mt: 2 }} onClick={() => setAddChargerTo(station)}>
-                    Add charger
-                  </Button>
+                {(canAddCharger || canSetPrices) && (
+                  <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                    {canAddCharger && (
+                      <Button size="small" startIcon={<AddRounded />} onClick={() => setAddChargerTo(station)}>
+                        Add charger
+                      </Button>
+                    )}
+                    {canSetPrices && (
+                      <Button size="small" startIcon={<CurrencyRupeeRounded />} onClick={() => setPricesFor(station)}>
+                        Prices
+                      </Button>
+                    )}
+                  </Stack>
                 )}
               </CardContent>
             </Card>
@@ -244,7 +258,8 @@ export default function StationsPage() {
       {booking && <BookSlotDialog open onClose={() => setBooking(null)} station={booking.station} charger={booking.charger} />}
       <ReportFaultDialog open={faultOpen} onClose={() => setFaultOpen(false)} chargerId={faultCharger} />
       <AddStationDialog open={addStation} onClose={() => setAddStation(false)} />
-      <AddChargerDialog station={addChargerTo} onClose={() => setAddChargerTo(null)} />
+      <AddChargerDialog key={addChargerTo?.id} station={addChargerTo} onClose={() => setAddChargerTo(null)} />
+      {pricesFor && <PricesDialog station={pricesFor} onClose={() => setPricesFor(null)} />}
     </>
   );
 }

@@ -9,9 +9,9 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(dbConnectionOptions()) }
 const DEMO_PASSWORD = 'Password@123';
 
 const roles = [
-  { name: 'ADMIN', description: 'Network Administrator - manages users, stations, chargers and tariffs' },
+  { name: 'ADMIN', description: 'Network Administrator - approves accounts, manages users and oversees stations' },
   { name: 'EV_OWNER', description: 'EV Owner - registers vehicles, books slots and pays invoices' },
-  { name: 'STATION_OWNER', description: 'Station Owner - adds stations and chargers, runs on-site sessions at own stations' },
+  { name: 'STATION_OWNER', description: 'Station Owner - adds stations, chargers and prices, runs on-site sessions at own stations' },
   { name: 'TECHNICIAN', description: 'Maintenance Technician - resolves charger faults' },
   { name: 'MANAGER', description: 'Operations Manager - reports, maintenance assignment and support enquiries' },
 ];
@@ -33,8 +33,8 @@ async function clearAll() {
   await prisma.maintenanceTicket.deleteMany();
   await prisma.chargerStatusLog.deleteMany();
   await prisma.charger.deleteMany();
+  await prisma.price.deleteMany();
   await prisma.station.deleteMany();
-  await prisma.tariff.deleteMany();
   await prisma.vehicle.deleteMany();
   await prisma.user.deleteMany();
   await prisma.role.deleteMany();

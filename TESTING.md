@@ -12,7 +12,7 @@ Follow the sections **in order**; each one creates the data the next needs. **Ac
 | 0.1 | `npm --prefix server run db:seed` | Table of 5 accounts: admin, owner, stationowner, tech, manager |
 | 0.2 | `npm run api` and `npm run web` (two terminals) | API prints "API ready…" |
 | 0.3 | Open http://localhost:5173 | Home page |
-| 0.4 | 🗄 DB **User**, **Tariff**, **Station** | 5 users; Tariff and Station empty |
+| 0.4 | 🗄 DB **User**, **Station**, **Price** | 5 users; Station and Price empty |
 
 ## 1. One-page website (signed out)
 | # | Action | Expected |
@@ -26,11 +26,10 @@ Follow the sections **in order**; each one creates the data the next needs. **Ac
 ## 2. Administrator setup (sign in as admin@evhub.com)
 | # | Action | Expected |
 |---|---|---|
-| 2.1 | Sign in | Menu: Overview, Account requests, Stations, Users, Tariffs. Lands on **Overview** |
-| 2.2 | Stations → **Add station** | Warning "No tariffs exist yet…" with a link; tariff dropdown disabled; Save disabled |
-| 2.3 | Tariffs → New tariff: peak start 22, end 18 | "Must be after peak start" |
-| 2.4 | Create `Metro Standard`: 18 / 24, peak 18→22, idle 5 | Card appears |
-| 2.5 | Open http://localhost:4000/api/docs → try `GET /api/enquiries` with the admin token | 403: the admin doesn't handle enquiries |
+| 2.1 | Sign in | Menu: Overview, Account requests, Stations, Users (no Tariffs/Prices page). Lands on **Overview** |
+| 2.2 | Stations | **No "Add station" button**: only station owners add stations and set prices |
+| 2.3 | Swagger `PUT /api/stations/1/prices` with the admin token | 403: the admin can't set prices |
+| 2.4 | Open http://localhost:4000/api/docs → try `GET /api/enquiries` with the admin token | 403: the admin doesn't handle enquiries |
 
 ## 3. Separate sign-up for each role (sign out)
 | # | Action | Expected |
@@ -58,10 +57,15 @@ Follow the sections **in order**; each one creates the data the next needs. **Ac
 | # | Action | Expected |
 |---|---|---|
 | 5.1 | Sign in | Menu: Overview, **My stations**, Bookings, Charging sessions, Invoices, Maintenance, Help & support |
-| 5.2 | My stations → **Add station** → `BLR-001`, Kapoor Mall Chargers, MG Road, Bengaluru, 12.97, 77.6, 00:00–23:59, **Metro Standard** | Station card: "No chargers yet…" |
+| 5.2 | My stations → **Add station** → `BLR-001`, Kapoor Mall Chargers, MG Road, Bengaluru, 12.97, 77.6, 00:00–23:59. Prices: peak hours **22 → 18** | Live error "Must be after peak start". Change to 18 → 22, idle fee ₹5 → saves. Card: "No chargers yet…", "Peak 18:00–22:00" |
 | 5.3 | Add station with ID `BLR-001` again | "Station ID BLR-001 already exists" (Rule 1) |
-| 5.4 | Add charger `BLR-001-C1` **CCS2** 30 kW | Live error "CCS2 must be 50–350 kW"; 60 kW saves |
-| 5.5 | Add `BLR-001-C2` Type 2 22 kW, `BLR-001-C3` Bharat DC-001 15 kW, `BLR-001-C4` CCS2 120 kW | All save |
+| 5.4 | Add charger `BLR-001-C1` **CCS2** 30 kW | Live error "CCS2 must be 50–350 kW"; 60 kW is accepted |
+| 5.4a | Same dialog: **Price for CCS2** fields appear. Price ₹18, peak ₹12 | Live error "Cannot be lower than the normal price". Peak ₹24 → saves. Card shows "CCS2 · 60 kW · ₹18.00/kWh" |
+| 5.5 | Add `BLR-001-C4` **CCS2** 120 kW | No price fields: "CCS2 price at this station: ₹18/kWh, peak ₹24/kWh" (one price per charging type) |
+| 5.5a | Add `BLR-001-C2` Type 2 22 kW (price ₹14 / peak ₹18) and `BLR-001-C3` Bharat DC-001 15 kW (₹12 / ₹15) | Both save with their own price |
+| 5.5b | Card → **Prices** → clear the Type 2 row → Save | Live error "Price is required" (Type 2 chargers exist) |
+| 5.5c | Prices → CCS2 ₹20 / ₹26, idle ₹4 → Save | "Prices saved for BLR-001"; card shows ₹20.00/kWh for CCS2 |
+| 5.5d | 🗄 DB **Price** | 3 rows for BLR-001: CCS2 20/26, TYPE2 14/18, BHARAT_DC001 12/15 |
 | 5.6 | Sign in as stationowner@evhub.com | **My stations** is empty: they don't see Neha's station |
 | 5.7 | Sign in as admin → Stations | BLR-001 shows "Owner: Neha Kapoor · Kapoor EV Parks" |
 | 5.8 | 🗄 DB **Station** | `ownerId` = Neha's user id |
@@ -77,7 +81,7 @@ Follow the sections **in order**; each one creates the data the next needs. **Ac
 | 6.6 | Bookings → Reschedule tomorrow's booking → 11:00; then Cancel it | Both work |
 | 6.7 | Bookings → ▶ Start on the next-slot booking | Sessions page; kWh climbs live |
 | 6.8 | Walk-in with the Nexon on C4 | "This vehicle is already charging in another session" |
-| 6.9 | Stop → idle 14 min | Invoice: peak/off-peak split, idle fee (14−10)×₹5 = ₹20, GST, total (Rules 8–10) |
+| 6.9 | Stop → idle 14 min | Invoice uses BLR-001's CCS2 price (₹20 normal / ₹26 peak): energy split, idle fee (14−10)×₹4 = ₹16, GST, total (Rules 8–10) |
 | 6.10 | Invoices → Pay → UPI | Paid |
 | 6.11 | Try http://localhost:5173/approvals | Redirected to Overview |
 
@@ -137,7 +141,7 @@ Follow the sections **in order**; each one creates the data the next needs. **Ac
 ```powershell
 npm test
 ```
-Expected: server **17 passed**, client **5 passed**.
+Expected: server **19 passed**, client **5 passed**.
 ```powershell
 npm --prefix server run db:seed
 ```

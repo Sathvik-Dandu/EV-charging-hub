@@ -10,6 +10,7 @@ import { useAppSelector } from '../../app/store';
 import { can } from '../../config/permissions';
 import { CONNECTORS, connectorLabel } from '../../config/connectors';
 import { money } from '../../utils/format';
+import { lowestPrice, priceFor } from '../../utils/prices';
 import StatusChip from '../common/StatusChip';
 import BookSlotDialog from '../dialogs/BookSlotDialog';
 import { brand } from '../../theme/palette';
@@ -95,7 +96,7 @@ export default function FindChargers({ city }: { city: string }) {
                   <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                     <ScheduleOutlined sx={{ fontSize: 16 }} />
                     <Typography variant="body2">
-                      {station.opensAt === '00:00' && station.closesAt === '23:59' ? 'Open 24 hours' : `${station.opensAt} – ${station.closesAt}`} · from {money(station.tariff.energyRate)}/kWh
+                      {station.opensAt === '00:00' && station.closesAt === '23:59' ? 'Open 24 hours' : `${station.opensAt} – ${station.closesAt}`}{lowestPrice(station) !== undefined && ` · from ${money(lowestPrice(station)!)}/kWh`}
                     </Typography>
                   </Stack>
                 </Stack>
@@ -109,6 +110,7 @@ export default function FindChargers({ city }: { city: string }) {
                         </Typography>
                         <Typography variant="caption" className="mono" color="text.secondary">
                           {charger.code}
+                          {priceFor(station, charger.connectorType) && ` · ${money(priceFor(station, charger.connectorType)!.pricePerKwh)}/kWh`}
                         </Typography>
                       </Box>
                       <StatusChip value={charger.status} />

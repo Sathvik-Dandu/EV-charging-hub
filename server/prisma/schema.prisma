@@ -74,8 +74,8 @@ enum TicketPriority {
 }
 
 model Role {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
+  id          Int    @id @default(autoincrement())
+  name        String @unique
   description String
   users       User[]
 }
@@ -104,38 +104,40 @@ model User {
 }
 
 model Vehicle {
-  id              Int              @id @default(autoincrement())
-  registrationNo  String           @unique
-  make            String
-  model           String
-  connectorType   ConnectorType
-  batteryKwh      Float
-  ownerId         Int
-  owner           User             @relation(fields: [ownerId], references: [id])
-  bookings        Booking[]
-  sessions        ChargingSession[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id             Int               @id @default(autoincrement())
+  registrationNo String            @unique
+  make           String
+  model          String
+  connectorType  ConnectorType
+  batteryKwh     Float
+  ownerId        Int
+  owner          User              @relation(fields: [ownerId], references: [id])
+  bookings       Booking[]
+  sessions       ChargingSession[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 }
 
 model Station {
-  id         Int       @id @default(autoincrement())
-  code       String    @unique
-  name       String
-  address    String
-  city       String
-  latitude   Float
-  longitude  Float
-  opensAt    String    @default("00:00")
-  closesAt   String    @default("23:59")
-  isActive   Boolean   @default(true)
-  tariffId   Int
-  tariff     Tariff    @relation(fields: [tariffId], references: [id])
-  ownerId    Int?
-  owner      User?     @relation("StationOwner", fields: [ownerId], references: [id])
-  chargers   Charger[]
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id            Int       @id @default(autoincrement())
+  code          String    @unique
+  name          String
+  address       String
+  city          String
+  latitude      Float
+  longitude     Float
+  opensAt       String    @default("00:00")
+  closesAt      String    @default("23:59")
+  isActive      Boolean   @default(true)
+  peakStartHour Int       @default(18)
+  peakEndHour   Int       @default(22)
+  idleFeePerMin Float     @default(5)
+  ownerId       Int?
+  owner         User?     @relation("StationOwner", fields: [ownerId], references: [id])
+  chargers      Charger[]
+  prices        Price[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([city])
 }
@@ -160,29 +162,28 @@ model Charger {
 }
 
 model ChargerStatusLog {
-  id         Int           @id @default(autoincrement())
+  id         Int            @id @default(autoincrement())
   chargerId  Int
-  charger    Charger       @relation(fields: [chargerId], references: [id])
+  charger    Charger        @relation(fields: [chargerId], references: [id])
   fromStatus ChargerStatus?
   toStatus   ChargerStatus
   reason     String
-  changedAt  DateTime      @default(now())
+  changedAt  DateTime       @default(now())
 
   @@index([chargerId, changedAt])
 }
 
-model Tariff {
-  id              Int       @id @default(autoincrement())
-  name            String    @unique
-  energyRate      Float
-  peakRate        Float
-  peakStartHour   Int
-  peakEndHour     Int
-  idleFeePerMin   Float
-  isActive        Boolean   @default(true)
-  stations        Station[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+model Price {
+  id              Int           @id @default(autoincrement())
+  stationId       Int
+  station         Station       @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  connectorType   ConnectorType
+  pricePerKwh     Float
+  peakPricePerKwh Float
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([stationId, connectorType])
 }
 
 model Booking {
@@ -207,22 +208,22 @@ model Booking {
 }
 
 model ChargingSession {
-  id              Int           @id @default(autoincrement())
-  bookingId       Int?          @unique
-  booking         Booking?      @relation(fields: [bookingId], references: [id])
-  chargerId       Int
-  charger         Charger       @relation(fields: [chargerId], references: [id])
-  vehicleId       Int
-  vehicle         Vehicle       @relation(fields: [vehicleId], references: [id])
-  startedAt       DateTime      @default(now())
-  endedAt         DateTime?
-  energyKwh       Float         @default(0)
-  durationMin     Int           @default(0)
-  idleMinutes     Int           @default(0)
-  status          SessionStatus @default(ACTIVE)
-  invoice         Invoice?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id          Int           @id @default(autoincrement())
+  bookingId   Int?          @unique
+  booking     Booking?      @relation(fields: [bookingId], references: [id])
+  chargerId   Int
+  charger     Charger       @relation(fields: [chargerId], references: [id])
+  vehicleId   Int
+  vehicle     Vehicle       @relation(fields: [vehicleId], references: [id])
+  startedAt   DateTime      @default(now())
+  endedAt     DateTime?
+  energyKwh   Float         @default(0)
+  durationMin Int           @default(0)
+  idleMinutes Int           @default(0)
+  status      SessionStatus @default(ACTIVE)
+  invoice     Invoice?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@index([chargerId, status])
 }

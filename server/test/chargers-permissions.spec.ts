@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chargerPowerError } from '../src/chargers/charger.rules';
+import { chargerPowerError, peakHoursError, priceError } from '../src/chargers/charger.rules';
 import { can } from '../src/common/permissions';
 
 describe('Charger power specifications', () => {
@@ -18,11 +18,23 @@ describe('Charger power specifications', () => {
   });
 });
 
+describe('Prices', () => {
+  it('does not allow a peak price lower than the normal price', () => {
+    expect(priceError({ pricePerKwh: 20, peakPricePerKwh: 15 })).toMatch(/cannot be lower/);
+    expect(priceError({ pricePerKwh: 20, peakPricePerKwh: 20 })).toBeNull();
+  });
+  it('requires peak hours to end after they start', () => {
+    expect(peakHoursError({ peakStartHour: 22, peakEndHour: 18 })).toMatch(/end after/);
+    expect(peakHoursError({ peakStartHour: 18, peakEndHour: 22 })).toBeNull();
+  });
+});
+
 describe('Permission map', () => {
-  it('lets admins and station owners add stations, but not EV owners', () => {
-    expect(can('ADMIN', 'stations:create')).toBe(true);
+  it('lets only station owners add stations and set prices', () => {
     expect(can('STATION_OWNER', 'stations:create')).toBe(true);
-    expect(can('EV_OWNER', 'stations:create')).toBe(false);
+    expect(can('ADMIN', 'stations:create')).toBe(false);
+    expect(can('STATION_OWNER', 'prices:manage')).toBe(true);
+    expect(can('ADMIN', 'prices:manage')).toBe(false);
   });
   it('gives maintenance assignment and enquiries to the manager only', () => {
     expect(can('MANAGER', 'tickets:assign')).toBe(true);

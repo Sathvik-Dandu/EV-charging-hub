@@ -19,16 +19,11 @@ export interface AuthResponse {
   user: AuthUser;
 }
 
-export interface Tariff {
+export interface StationPrice {
   id: number;
-  name: string;
-  energyRate: number;
-  peakRate: number;
-  peakStartHour: number;
-  peakEndHour: number;
-  idleFeePerMin: number;
-  isActive: boolean;
-  _count?: { stations: number };
+  connectorType: ConnectorType;
+  pricePerKwh: number;
+  peakPricePerKwh: number;
 }
 
 export interface Charger {
@@ -53,8 +48,10 @@ export interface Station {
   opensAt: string;
   closesAt: string;
   isActive: boolean;
-  tariffId: number;
-  tariff: Tariff;
+  peakStartHour: number;
+  peakEndHour: number;
+  idleFeePerMin: number;
+  prices: StationPrice[];
   ownerId: number | null;
   owner?: { fullName: string; organization: string | null } | null;
   chargers: Charger[];
@@ -110,7 +107,7 @@ export interface ChargingSession {
   status: 'ACTIVE' | 'COMPLETED';
   batteryFull?: boolean;
   vehicle: Pick<Vehicle, 'registrationNo' | 'make' | 'model' | 'batteryKwh'>;
-  charger: { code: string; powerKw: number; connectorType: ConnectorType; station: { name: string; city: string; tariff?: Tariff } };
+  charger: { code: string; powerKw: number; connectorType: ConnectorType; station: { name: string; city: string; idleFeePerMin?: number } };
   booking: { reference: string } | null;
   invoice: Invoice | null;
 }

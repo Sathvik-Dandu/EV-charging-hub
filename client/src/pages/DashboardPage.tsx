@@ -21,7 +21,7 @@ import { brand } from '../theme/palette';
 const QUICK_ACTIONS: Record<Role, { label: string; to: string }[]> = {
   ADMIN: [
     { label: 'Review account requests', to: '/approvals' },
-    { label: 'Add a tariff', to: '/tariffs' },
+    { label: 'View stations', to: '/stations' },
     { label: 'Manage users', to: '/users' },
   ],
   EV_OWNER: [
@@ -114,8 +114,8 @@ export default function DashboardPage() {
           <Typography variant="h6">No stations yet</Typography>
           <Typography color="text.secondary" sx={{ mt: 0.5 }}>
             {user.role === 'ADMIN'
-              ? 'Create a tariff first. Approved station owners can then add their stations (you can add stations too).'
-              : 'Open My stations and click "Add station". Then add chargers to it so drivers can book.'}
+              ? 'Approve station owner sign-ups. Approved station owners add their stations, chargers and prices.'
+              : 'Open My stations and click "Add station". Then add chargers with their price per kWh so drivers can book.'}
           </Typography>
         </Box>
       )}

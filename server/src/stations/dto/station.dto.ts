@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsLatitude, IsLongitude, IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsArray, IsBoolean, IsEnum, IsInt, IsLatitude, IsLongitude, IsNumber, IsOptional, IsString, Matches, Max, Min, MinLength, ValidateNested,
+} from 'class-validator';
 import { ConnectorType } from '../../generated/prisma/enums';
+import { BUSINESS_RULES } from '../../common/business-rules';
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -41,9 +44,67 @@ export class CreateStationDto {
   @Matches(TIME, { message: 'Closing time must be HH:mm' })
   closesAt: string;
 
-  @ApiProperty({ example: 1 })
+  @ApiProperty({ example: 18, description: 'Peak hours start (0-23)' })
   @IsInt()
-  tariffId: number;
+  @Min(0)
+  @Max(23)
+  peakStartHour: number;
+
+  @ApiProperty({ example: 22, description: 'Peak hours end (1-24)' })
+  @IsInt()
+  @Min(1)
+  @Max(24)
+  peakEndHour: number;
+
+  @ApiProperty({ example: 5, description: 'Idle fee per minute after the free minutes' })
+  @IsNumber()
+  @Min(0)
+  @Max(BUSINESS_RULES.MAX_IDLE_FEE_PER_MIN)
+  idleFeePerMin: number;
+}
+
+export class PriceDto {
+  @ApiProperty({ enum: ConnectorType })
+  @IsEnum(ConnectorType)
+  connectorType: ConnectorType;
+
+  @ApiProperty({ example: 18, description: 'Price per kWh (normal hours)' })
+  @IsNumber()
+  @Min(1)
+  @Max(BUSINESS_RULES.MAX_PRICE_PER_KWH)
+  pricePerKwh: number;
+
+  @ApiProperty({ example: 24, description: 'Price per kWh during peak hours' })
+  @IsNumber()
+  @Min(1)
+  @Max(BUSINESS_RULES.MAX_PRICE_PER_KWH)
+  peakPricePerKwh: number;
+}
+
+export class StationPricesDto {
+  @ApiProperty({ example: 18 })
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  peakStartHour: number;
+
+  @ApiProperty({ example: 22 })
+  @IsInt()
+  @Min(1)
+  @Max(24)
+  peakEndHour: number;
+
+  @ApiProperty({ example: 5 })
+  @IsNumber()
+  @Min(0)
+  @Max(BUSINESS_RULES.MAX_IDLE_FEE_PER_MIN)
+  idleFeePerMin: number;
+
+  @ApiProperty({ type: [PriceDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PriceDto)
+  prices: PriceDto[];
 }
 
 export class UpdateStationDto extends PartialType(CreateStationDto) {

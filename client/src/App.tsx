@@ -19,7 +19,6 @@ const EnquiriesPage = lazy(() => import('./pages/EnquiriesPage'));
 const ApprovalsPage = lazy(() => import('./pages/ApprovalsPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
-const TariffsPage = lazy(() => import('./pages/TariffsPage'));
 
 const Loading = () => (
   <Box sx={{ display: 'grid', placeItems: 'center', minHeight: '50vh' }}>
@@ -50,7 +49,6 @@ export default function App() {
               <Route path="/approvals" element={<ApprovalsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/users" element={<UsersPage />} />
-              <Route path="/tariffs" element={<TariffsPage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

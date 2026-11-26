@@ -91,16 +91,35 @@ export const stationSchema = z.object({
   longitude: z.coerce.number<string>().min(-180).max(180),
   opensAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'HH:mm'),
   closesAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'HH:mm'),
-  tariffId: z.coerce.number<string>().positive('Select a tariff'),
-});
+  peakStartHour: z.coerce.number<string>().int('Whole hour').min(0, '0–23').max(23, '0–23'),
+  peakEndHour: z.coerce.number<string>().int('Whole hour').min(1, '1–24').max(24, '1–24'),
+  idleFeePerMin: z.coerce.number<string>().min(0, 'Cannot be negative').max(50, 'Max ₹50'),
+}).refine((v) => v.peakEndHour > v.peakStartHour, { message: 'Must be after peak start', path: ['peakEndHour'] });
 
-export const chargerSchema = z
+const priceText = z.string().trim();
+
+function checkPrice(ctx: z.RefinementCtx, path: (string | number)[], price: string, peak: string, required: boolean) {
+  if (!price && !peak) {
+    if (required) ctx.addIssue({ code: 'custom', path: [...path, 'pricePerKwh'], message: 'Price is required' });
+    return;
+  }
+  const p = Number(price);
+  const k = Number(peak);
+  if (!price || Number.isNaN(p) || p < 1 || p > 100) ctx.addIssue({ code: 'custom', path: [...path, 'pricePerKwh'], message: '₹1–100 per kWh' });
+  if (!peak || Number.isNaN(k) || k < 1 || k > 100) ctx.addIssue({ code: 'custom', path: [...path, 'peakPricePerKwh'], message: '₹1–100 per kWh' });
+  else if (k < p) ctx.addIssue({ code: 'custom', path: [...path, 'peakPricePerKwh'], message: 'Cannot be lower than the normal price' });
+}
+
+export const chargerSchema = (pricedTypes: readonly string[] = []) => z
   .object({
     code: z.string().regex(/^[A-Z]{3}-\d{3}-C\d{1,2}$/, 'Format: BLR-005-C1'),
     connectorType: z.enum(CONNECTORS),
     powerKw: z.coerce.number<string>().positive('Enter the power rating'),
+    pricePerKwh: priceText,
+    peakPricePerKwh: priceText,
   })
   .superRefine((v, ctx) => {
+    if (!pricedTypes.includes(v.connectorType)) checkPrice(ctx, [], v.pricePerKwh, v.peakPricePerKwh, true);
     const spec = CONNECTOR_SPECS[v.connectorType];
     if (v.powerKw < spec.minKw || v.powerKw > spec.maxKw) {
       ctx.addIssue({
@@ -111,16 +130,20 @@ export const chargerSchema = z
     }
   });
 
-export const tariffSchema = z
+export const pricesSchema = (typesInUse: readonly string[] = []) => z
   .object({
-    name: z.string().min(3, 'Name is required'),
-    energyRate: z.coerce.number<string>().min(1),
-    peakRate: z.coerce.number<string>().min(1),
-    peakStartHour: z.coerce.number<string>().int().min(0).max(23),
-    peakEndHour: z.coerce.number<string>().int().min(1).max(24),
-    idleFeePerMin: z.coerce.number<string>().min(0),
+    peakStartHour: z.coerce.number<string>().int('Whole hour').min(0, '0–23').max(23, '0–23'),
+    peakEndHour: z.coerce.number<string>().int('Whole hour').min(1, '1–24').max(24, '1–24'),
+    idleFeePerMin: z.coerce.number<string>().min(0, 'Cannot be negative').max(50, 'Max ₹50'),
+    rates: z.record(z.enum(CONNECTORS), z.object({ pricePerKwh: priceText, peakPricePerKwh: priceText })),
   })
-  .refine((v) => v.peakEndHour > v.peakStartHour, { message: 'Must be after peak start', path: ['peakEndHour'] });
+  .superRefine((v, ctx) => {
+    if (v.peakEndHour <= v.peakStartHour) ctx.addIssue({ code: 'custom', path: ['peakEndHour'], message: 'Must be after peak start' });
+    for (const type of CONNECTORS) {
+      const r = v.rates[type];
+      checkPrice(ctx, ['rates', type], r?.pricePerKwh ?? '', r?.peakPricePerKwh ?? '', typesInUse.includes(type));
+    }
+  });
 
 export const userSchema = z.object({
   fullName,

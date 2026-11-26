@@ -8,6 +8,7 @@ import { bookingApi, chargerApi, vehicleApi } from '../../api/endpoints';
 import { errorMessage } from '../../api/client';
 import type { Charger, Station } from '../../api/types';
 import { bookingSchema, SLOT_DURATIONS } from '../../schemas/forms';
+import { peakHoursText, priceFor } from '../../utils/prices';
 import { money, timeOnly } from '../../utils/format';
 import { useNotify } from '../common/Notifier';
 import { connectorLabel } from '../../config/connectors';
@@ -65,8 +66,10 @@ export default function BookSlotDialog({ open, onClose, station, charger }: Prop
     if (!vehicle) return null;
     const energy = Math.min((charger.powerKw * Number(duration) * 0.92) / 60, vehicle.batteryKwh * 0.8);
     const hour = Number(time?.split(':')[0] ?? 0);
-    const peak = hour >= station.tariff.peakStartHour && hour < station.tariff.peakEndHour;
-    return { energy, cost: energy * (peak ? station.tariff.peakRate : station.tariff.energyRate) * 1.18, peak };
+    const price = priceFor(station, charger.connectorType);
+    if (!price) return null;
+    const peak = hour >= station.peakStartHour && hour < station.peakEndHour;
+    return { energy, cost: energy * (peak ? price.peakPricePerKwh : price.pricePerKwh) * 1.18, peak, price };
   }, [vehicle, duration, time, charger, station]);
 
   const mutation = useMutation({
@@ -164,8 +167,7 @@ export default function BookSlotDialog({ open, onClose, station, charger }: Prop
                   ~{estimate.energy.toFixed(1)} kWh · {money(estimate.cost)}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Rates: {money(station.tariff.energyRate)}/kWh off-peak, {money(station.tariff.peakRate)}/kWh peak ({station.tariff.peakStartHour}:00–
-                  {station.tariff.peakEndHour}:00), incl. 18% GST
+                  Prices: {money(estimate.price.pricePerKwh)}/kWh, {money(estimate.price.peakPricePerKwh)}/kWh in peak hours ({peakHoursText(station)}), incl. 18% GST
                 </Typography>
               </Box>
             )}

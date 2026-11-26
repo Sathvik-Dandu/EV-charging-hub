@@ -10,7 +10,7 @@ const invoiceInclude = {
   session: {
     include: {
       vehicle: { select: { registrationNo: true, make: true, model: true, ownerId: true } },
-      charger: { select: { code: true, station: { select: { name: true, city: true, tariff: true } } } },
+      charger: { select: { code: true, connectorType: true, station: { select: { name: true, city: true, idleFeePerMin: true } } } },
       booking: { select: { reference: true } },
     },
   },

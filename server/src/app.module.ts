@@ -12,7 +12,6 @@ import { UsersModule } from './users/users.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
 import { StationsModule } from './stations/stations.module';
 import { ChargersModule } from './chargers/chargers.module';
-import { TariffsModule } from './tariffs/tariffs.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { InvoicesModule } from './invoices/invoices.module';
@@ -36,7 +35,6 @@ import { ReportsModule } from './reports/reports.module';
     VehiclesModule,
     StationsModule,
     ChargersModule,
-    TariffsModule,
     BookingsModule,
     SessionsModule,
     InvoicesModule,

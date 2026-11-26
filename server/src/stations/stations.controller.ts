@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { StationsService } from './stations.service';
-import { CreateStationDto, StationSearchDto, UpdateStationDto } from './dto/station.dto';
+import { CreateStationDto, StationPricesDto, StationSearchDto, UpdateStationDto } from './dto/station.dto';
 import { AuthUser, Can, CurrentUser, Public } from '../common/auth.decorators';
 import { can } from '../common/permissions';
 
@@ -40,5 +40,11 @@ export class StationsController {
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateStationDto, @CurrentUser() user: AuthUser) {
     return this.stations.update(id, dto, user);
+  }
+
+  @Can('prices:manage')
+  @Put(':id/prices')
+  setPrices(@Param('id', ParseIntPipe) id: number, @Body() dto: StationPricesDto, @CurrentUser() user: AuthUser) {
+    return this.stations.setPrices(id, dto, user);
   }
 }

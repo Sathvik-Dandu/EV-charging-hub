@@ -9,7 +9,7 @@
 -- PART 1 (OPTIONAL): DROP EVERYTHING. Deletes all Charge Hub data.
 -- =====================================================================
 DROP TABLE IF EXISTS "Enquiry", "AuditLog", "MaintenanceTicket", "Invoice", "ChargingSession",
-  "Booking", "ChargerStatusLog", "Charger", "Station", "Tariff", "Vehicle", "User", "Role",
+  "Booking", "ChargerStatusLog", "Charger", "Price", "Station", "Tariff", "Vehicle", "User", "Role",
   "_prisma_migrations" CASCADE;
 DROP TYPE IF EXISTS "ConnectorType", "ChargerStatus", "BookingStatus", "SessionStatus", "PaymentStatus",
   "TicketStatus", "ApprovalStatus", "EnquiryCategory", "EnquiryStatus", "TicketPriority" CASCADE;
@@ -19,6 +19,9 @@ DROP TYPE IF EXISTS "ConnectorType", "ChargerStatus", "BookingStatus", "SessionS
 -- PART 2: TABLES, ENUMS, INDEXES, FOREIGN KEYS
 -- (generated from server/prisma/schema.prisma)
 -- =====================================================================
+
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
 
 -- CreateEnum
 CREATE TYPE "ConnectorType" AS ENUM ('CCS2', 'CHADEMO', 'TYPE2', 'BHARAT_DC001', 'BHARAT_AC001');
@@ -105,7 +108,9 @@ CREATE TABLE "Station" (
     "opensAt" TEXT NOT NULL DEFAULT '00:00',
     "closesAt" TEXT NOT NULL DEFAULT '23:59',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "tariffId" INTEGER NOT NULL,
+    "peakStartHour" INTEGER NOT NULL DEFAULT 18,
+    "peakEndHour" INTEGER NOT NULL DEFAULT 22,
+    "idleFeePerMin" DOUBLE PRECISION NOT NULL DEFAULT 5,
     "ownerId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -141,19 +146,16 @@ CREATE TABLE "ChargerStatusLog" (
 );
 
 -- CreateTable
-CREATE TABLE "Tariff" (
+CREATE TABLE "Price" (
     "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-    "energyRate" DOUBLE PRECISION NOT NULL,
-    "peakRate" DOUBLE PRECISION NOT NULL,
-    "peakStartHour" INTEGER NOT NULL,
-    "peakEndHour" INTEGER NOT NULL,
-    "idleFeePerMin" DOUBLE PRECISION NOT NULL,
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "stationId" INTEGER NOT NULL,
+    "connectorType" "ConnectorType" NOT NULL,
+    "pricePerKwh" DOUBLE PRECISION NOT NULL,
+    "peakPricePerKwh" DOUBLE PRECISION NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Tariff_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Price_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -285,7 +287,7 @@ CREATE INDEX "Charger_stationId_status_idx" ON "Charger"("stationId", "status");
 CREATE INDEX "ChargerStatusLog_chargerId_changedAt_idx" ON "ChargerStatusLog"("chargerId", "changedAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Tariff_name_key" ON "Tariff"("name");
+CREATE UNIQUE INDEX "Price_stationId_connectorType_key" ON "Price"("stationId", "connectorType");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Booking_reference_key" ON "Booking"("reference");
@@ -327,9 +329,6 @@ ALTER TABLE "User" ADD CONSTRAINT "User_roleId_fkey" FOREIGN KEY ("roleId") REFE
 ALTER TABLE "Vehicle" ADD CONSTRAINT "Vehicle_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Station" ADD CONSTRAINT "Station_tariffId_fkey" FOREIGN KEY ("tariffId") REFERENCES "Tariff"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Station" ADD CONSTRAINT "Station_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -337,6 +336,9 @@ ALTER TABLE "Charger" ADD CONSTRAINT "Charger_stationId_fkey" FOREIGN KEY ("stat
 
 -- AddForeignKey
 ALTER TABLE "ChargerStatusLog" ADD CONSTRAINT "ChargerStatusLog_chargerId_fkey" FOREIGN KEY ("chargerId") REFERENCES "Charger"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Price" ADD CONSTRAINT "Price_stationId_fkey" FOREIGN KEY ("stationId") REFERENCES "Station"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Booking" ADD CONSTRAINT "Booking_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -372,14 +374,13 @@ ALTER TABLE "MaintenanceTicket" ADD CONSTRAINT "MaintenanceTicket_assignedToId_f
 ALTER TABLE "Enquiry" ADD CONSTRAINT "Enquiry_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 
-
 -- =====================================================================
 -- PART 3: ROLES AND THE 5 DEMO ACCOUNTS (password for all: Password@123)
 -- =====================================================================
 INSERT INTO "Role" ("name", "description") VALUES
-  ('ADMIN', 'Network Administrator - manages users, stations, chargers and tariffs'),
+  ('ADMIN', 'Network Administrator - approves accounts, manages users and oversees stations'),
   ('EV_OWNER', 'EV Owner - registers vehicles, books slots and pays invoices'),
-  ('STATION_OWNER', 'Station Owner - adds stations and chargers, runs on-site sessions at own stations'),
+  ('STATION_OWNER', 'Station Owner - adds stations, chargers and prices, runs on-site sessions at own stations'),
   ('TECHNICIAN', 'Maintenance Technician - resolves charger faults'),
   ('MANAGER', 'Operations Manager - reports, maintenance assignment and support enquiries');
 

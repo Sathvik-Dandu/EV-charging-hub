@@ -63,9 +63,10 @@ of the previous page. This fixed "the next user opened on the previous user's pa
 
 ## Role flows (who does what)
 ```
-ADMIN          Tariffs → Account requests (approve station owners and technicians) → Users (roles, deactivate)
+ADMIN          Account requests (approve station owners and technicians) → Users (roles, deactivate)
                  → Stations (see all, switch off any station or charger)
-STATION_OWNER  sign up → approved → My stations → Add station → Add charger (kW rule per type)
+STATION_OWNER  sign up → approved → My stations → Add station (peak hours, idle fee)
+                 → Add charger (kW rule per type; first charger of a type asks its price per kWh) → Prices
                  → Bookings / Sessions / Invoices at own stations → start/stop on-site sessions
                  → report faults on own chargers → Help & support
 EV_OWNER       sign up → My vehicles → Stations / home "Find a charger" → Book → Start → Stop → Invoice → Pay
@@ -88,7 +89,8 @@ TECHNICIAN     sign up → approved → My work queue: Start work → Resolve (c
 ## Live updates, background jobs, billing
 - **Live status:** `chargers/charger-status.service.ts` updates the charger, writes `ChargerStatusLog` and emits `charger:status`. `hooks/useRealtime.ts` in the browser refreshes the lists.
 - **No-show:** `bookings.service.ts` schedules BullMQ jobs and `bookings.processor.ts` releases unstarted bookings after 15 minutes.
-- **Billing:** `sessions/billing.ts calculateBill()` splits peak and off-peak minute by minute, adds the idle fee after 10 free minutes, then 18% GST.
+- **Prices:** set by the station owner. `Station` holds peak hours and the idle fee; table `Price` holds one price per kWh + peak price per kWh for each charging type at the station.
+- **Billing:** `sessions.service.ts stop()` picks the station's price for the charger's type, then `sessions/billing.ts calculateBill()` splits peak and normal hours minute by minute, adds the idle fee after 10 free minutes, then 18% GST.
 
 ---
 
@@ -97,7 +99,7 @@ TECHNICIAN     sign up → approved → My work queue: Start work → Resolve (c
 ## Public
 | Screen (client file) | API | Server |
 |---|---|---|
-| Home `pages/public/HomePage.tsx` (sections #find #host #platform #resources) | `GET /api/stations`, `GET /api/tariffs` | `stations.service.ts search()`, `tariffs.service.ts findAll()` |
+| Home `pages/public/HomePage.tsx` (sections #find #host #platform #resources) | `GET /api/stations` (includes each station's prices) | `stations.service.ts search()` |
 | Find a charger section `components/public/FindChargers.tsx` | `GET /api/stations?city=&connector=&available=`, `GET /api/stations/cities` | `stations.service.ts search() / cities()` |
 | Sign in `pages/LoginPage.tsx` | `POST /api/auth/login` | `auth.service.ts login()` |
 | Sign up `pages/RegisterPage.tsx` | `POST /api/auth/register` | `auth.service.ts register()` |
@@ -109,7 +111,8 @@ TECHNICIAN     sign up → approved → My work queue: Start work → Resolve (c
 | Account requests `pages/ApprovalsPage.tsx` | list / approve / reject | `GET /api/users/requests`, `PATCH /api/users/:id/approve`, `PATCH /api/users/:id/reject` | `users.service.ts requests() / approve() / reject()` |
 | Stations `pages/StationsPage.tsx` | list | `GET /api/stations?manage=true` (admin/owner) | `stations.service.ts search()` |
 | | Add station (`components/dialogs/StationDialogs.tsx`) | `POST /api/stations` | `stations.service.ts create()` (owner → `ownerId` = you) |
-| | Add charger (same file) | `POST /api/chargers` | `chargers.service.ts create()` + `charger.rules.ts` |
+| | Add charger (same file; price fields for a new charging type) | `POST /api/chargers` | `chargers.service.ts create()` + `charger.rules.ts` (kW, price rules) |
+| | Prices (same file, `PricesDialog`) | `PUT /api/stations/:id/prices` | `stations.service.ts setPrices()` |
 | | Switch charger on/off | `PATCH /api/chargers/:id/active` | `chargers.service.ts setActive()` |
 | | Book (`components/dialogs/BookSlotDialog.tsx`) | `GET /api/chargers/:id/slots`, `POST /api/bookings` | `chargers.service.ts slots()`, `bookings.service.ts create()` |
 | | Report fault (`components/dialogs/ReportFaultDialog.tsx`) | `POST /api/maintenance` | `maintenance.service.ts create()` |
@@ -121,7 +124,6 @@ TECHNICIAN     sign up → approved → My work queue: Start work → Resolve (c
 | Reports `pages/ReportsPage.tsx` | 5 reports | `GET /api/reports/utilization`, `/utilization-by-hour`, `/revenue`, `/faults`, `/bookings` | `reports/reports.service.ts` |
 | Help & support / Enquiries `pages/EnquiriesPage.tsx` | ask / list / reply | `POST /api/enquiries`, `GET /api/enquiries`, `PATCH /api/enquiries/:id` | `enquiries.service.ts create() / findAll() / reply()` |
 | Users `pages/UsersPage.tsx` | list / add / role / active | `GET/POST /api/users`, `PATCH /api/users/:id/role`, `PATCH /api/users/:id/status` | `users.service.ts` |
-| Tariffs `pages/TariffsPage.tsx` | list / add / edit | `GET/POST /api/tariffs`, `PATCH /api/tariffs/:id` | `tariffs.service.ts` |
 
 Try any endpoint at http://localhost:4000/api/docs (click **Authorize** and paste an access token).
 
@@ -134,10 +136,10 @@ Try any endpoint at http://localhost:4000/api/docs (click **Authorize** and past
 | 5 No-show release | `bookings.service.ts releaseNoShows()` + `bookings.processor.ts` |
 | 6 Max 2 upcoming | `bookings.service.ts create()` |
 | 7 Booking or walk-in | `sessions.service.ts startFromBooking() / startWalkIn()` |
-| 8 Peak tariff / 9 Idle fee | `sessions/billing.ts calculateBill()` |
+| 8 Peak-hour price / 9 Idle fee | `sessions/billing.ts calculateBill()` |
 | 10 Invoice per session | `sessions.service.ts stop()` |
 | 11 Status timestamps | `chargers/charger-status.service.ts` → `ChargerStatusLog` |
-| 12 Admin-only master data | `common/permissions.ts` (`users:manage`, `tariffs:manage`, `accounts:approve`) |
+| 12 Admin-only master data | `common/permissions.ts` (`users:manage`, `accounts:approve`); prices are station-owner only (`prices:manage`) |
 | Charger kW per type | `chargers/charger.rules.ts` + `CONNECTOR_SPECS` in `common/business-rules.ts` |
 
 ---
@@ -148,7 +150,7 @@ Try any endpoint at http://localhost:4000/api/docs (click **Authorize** and past
 | File | Contains |
 |---|---|
 | `.env` / `.env.example` | Port, DB URL, Redis, **JWT secrets**, simulation speed. The API refuses to start if a required line is missing |
-| `prisma/schema.prisma` | All tables: User (+ `approvalStatus`, `organization`), Role, Vehicle, Station (+ `ownerId`), Charger, Tariff, Booking, ChargingSession, Invoice, MaintenanceTicket, Enquiry, ChargerStatusLog, AuditLog |
+| `prisma/schema.prisma` | All tables: User (+ `approvalStatus`, `organization`), Role, Vehicle, Station (+ `ownerId`, peak hours, idle fee), Charger, Price (per station + charging type), Booking, ChargingSession, Invoice, MaintenanceTicket, Enquiry, ChargerStatusLog, AuditLog |
 | `prisma/migrations/` | SQL applied in order |
 | `prisma/seed.ts` | Wipes everything, creates 5 roles + 5 demo accounts |
 | `src/main.ts` | Checks `.env`, starts NestJS, `/api` prefix, validation, Swagger |
@@ -164,7 +166,6 @@ Try any endpoint at http://localhost:4000/api/docs (click **Authorize** and past
 | `src/users/` | users, staff creation, role change, activate, **account requests approve/reject**, technician list |
 | `src/stations/` | public search, admin/owner management view, create/update with ownership check |
 | `src/chargers/` | list (scoped), create with kW rule and ownership, activate, slots, history, `charger-status.service.ts` |
-| `src/tariffs/` | public list; admin create/update |
 | `src/vehicles/` | EV owner vehicles |
 | `src/bookings/` | booking engine, rules, BullMQ processor |
 | `src/sessions/` | start (booking/walk-in), stop + invoice, `billing.ts` |
@@ -193,9 +194,9 @@ Try any endpoint at http://localhost:4000/api/docs (click **Authorize** and past
 | `components/public/FindChargers.tsx` | Find-a-charger search and results on the home page |
 | `components/public/Blocks.tsx`, `FloatingTiles.tsx` | Website sections and hero cards |
 | `components/common/*` | PasswordField (eye), PhoneField, StatusChip, StatCard, PageHeader, Notifier |
-| `components/dialogs/*` | Book slot, Add station (tariff check), Add charger, Report fault |
+| `components/dialogs/*` | Book slot, Add station, Add charger (with price), Prices, Report fault |
 | `pages/public/HomePage.tsx`, `pages/public/content.ts` | The one-page website; FAQ and role text |
 | `pages/LoginPage.tsx`, `RegisterPage.tsx`, `AuthShell.tsx` | Sign in, role-tab sign-up, shared frame |
 | `pages/DashboardPage.tsx`, `pages/dashboard/*` | Overview per role, live charger tiles, live feed |
 | `pages/ApprovalsPage.tsx` | Admin account requests |
-| `pages/StationsPage.tsx`, `VehiclesPage.tsx`, `BookingsPage.tsx`, `SessionsPage.tsx`, `InvoicesPage.tsx`, `MaintenancePage.tsx`, `ReportsPage.tsx`, `EnquiriesPage.tsx`, `UsersPage.tsx`, `TariffsPage.tsx` | One page each (see Part 2) |
+| `pages/StationsPage.tsx`, `VehiclesPage.tsx`, `BookingsPage.tsx`, `SessionsPage.tsx`, `InvoicesPage.tsx`, `MaintenancePage.tsx`, `ReportsPage.tsx`, `EnquiriesPage.tsx`, `UsersPage.tsx` | One page each (see Part 2) |

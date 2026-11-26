@@ -26,7 +26,7 @@ A shop or library app is mostly add/edit/delete screens. This project has **12 B
 | No double booking of a charger | Needs a **database transaction + Redis lock** so two people clicking "Book" at the same moment can't both win |
 | Connector must match the vehicle | Cross-checks two different tables before saving |
 | Auto-cancel after 15 minutes no-show | Needs **background jobs** (BullMQ) that run on a timer, not on a button click |
-| Peak-hour tariff + idle fee + GST | A real **billing calculation**, split minute by minute between peak and off-peak |
+| Station-owner prices + peak hours + idle fee + GST | Each owner prices each charging type; a real **billing calculation** splits energy minute by minute between peak and normal hours |
 | Every status change logged with time | An **audit trail**, as in real enterprise software |
 | Charger power limits per type | CCS2/CHAdeMO ≥ 50 kW, Type 2 ≥ 22 kW, Bharat DC-001 = 15 kW, Bharat AC-001 = 10 kW |
 
@@ -163,18 +163,19 @@ Validation limits are enforced by the server DTOs (`server/src/*/dto`, `server/s
 | ownerId | Int FK → User | the EV owner |
 | createdAt / updatedAt | timestamp | automatic |
 
-### 3.4 Tariff
+### 3.4 Price (set by the station owner)
+One row per station **and** charging type. Example: BLR-001 has a CCS2 row (₹20 / ₹26) and a Type 2 row (₹14 / ₹18).
+
 | Column | Type | Rules / limits |
 |---|---|---|
 | id | Int PK | auto |
-| name | text, **unique** | min 3 characters |
-| energyRate | double | ₹ per kWh off-peak, minimum 1 |
-| peakRate | double | ₹ per kWh in peak hours, minimum 1 |
-| peakStartHour | integer | 0–23 |
-| peakEndHour | integer | 1–24, must be greater than peakStartHour |
-| idleFeePerMin | double | ₹ per minute after the 10 free minutes, minimum 0 |
-| isActive | boolean | default true |
+| stationId | Int FK → Station | deleting a station deletes its prices (`ON DELETE CASCADE`) |
+| connectorType | enum | CCS2, CHADEMO, TYPE2, BHARAT_DC001, BHARAT_AC001 |
+| pricePerKwh | double | ₹ per kWh in normal hours, 1–100 |
+| peakPricePerKwh | double | ₹ per kWh in peak hours, 1–100, not lower than pricePerKwh |
 | createdAt / updatedAt | timestamp | automatic |
+
+**Unique** on (stationId, connectorType): a station can't have two prices for the same type. Every charging type that has a charger at the station must have a price.
 
 ### 3.5 Station
 | Column | Type | Rules / limits |
@@ -188,8 +189,10 @@ Validation limits are enforced by the server DTOs (`server/src/*/dto`, `server/s
 | longitude | double | −180 to 180 |
 | opensAt / closesAt | text | `HH:mm` (00:00–23:59); defaults 00:00 and 23:59 |
 | isActive | boolean | default true |
-| tariffId | Int FK → Tariff | must be an active tariff |
-| ownerId | Int FK → User, optional | the station owner; empty if the admin created it |
+| peakStartHour | integer | 0–23, default 18 |
+| peakEndHour | integer | 1–24, default 22, must be greater than peakStartHour |
+| idleFeePerMin | double | ₹ per minute after the 10 free minutes, 0–50, default 5 |
+| ownerId | Int FK → User, optional | the station owner who added it (only station owners add stations) |
 | createdAt / updatedAt | timestamp | automatic |
 
 ### 3.6 Charger
@@ -249,7 +252,7 @@ Each EV owner can have **at most 2** CONFIRMED future bookings.
 | id | Int PK | auto |
 | invoiceNo | text, **unique** | generated, e.g. `INV-261125-K2P4` |
 | sessionId | Int FK → ChargingSession, **unique** | exactly one invoice per session |
-| offPeakKwh / peakKwh | double | energy split by tariff hours |
+| offPeakKwh / peakKwh | double | energy split by the station's peak hours |
 | energyCost / peakCost | double | ₹, rounded to 2 decimals |
 | idleFee | double | (idle minutes − 10) × idle rate, never below 0 |
 | taxAmount | double | 18% GST |
@@ -300,7 +303,7 @@ Each EV owner can have **at most 2** CONFIRMED future bookings.
 
 ### 3.14 How the tables connect
 ```
-Role 1──* User 1──* Vehicle 1──* Booking *──1 Charger *──1 Station *──1 Tariff
+Role 1──* User 1──* Vehicle 1──* Booking *──1 Charger *──1 Station 1──* Price (one per charging type)
           │  │                      │ 0..1        │            │
           │  │                      ▼             │            └── ownerId → User (station owner)
           │  │              ChargingSession 1──1 Invoice

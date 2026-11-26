@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { calculateBill } from '../src/sessions/billing';
 import { overlaps, validateSlot } from '../src/bookings/booking.rules';
 
-const tariff = { energyRate: 18, peakRate: 24, peakStartHour: 18, peakEndHour: 22, idleFeePerMin: 5 };
+const prices = { pricePerKwh: 18, peakPricePerKwh: 24, peakStartHour: 18, peakEndHour: 22, idleFeePerMin: 5 };
 const at = (h: number, m = 0) => new Date(2026, 10, 25, h, m);
 
 describe('Overlap detection (Rule 2)', () => {
@@ -33,25 +33,25 @@ describe('Slot validation', () => {
 
 describe('Billing (Rules 8, 9)', () => {
   it('charges off-peak rate outside peak hours', () => {
-    const bill = calculateBill({ startedAt: at(10), durationMin: 60, energyKwh: 30, idleMinutes: 0, tariff });
+    const bill = calculateBill({ startedAt: at(10), durationMin: 60, energyKwh: 30, idleMinutes: 0, prices });
     expect(bill.energyCost).toBe(540);
     expect(bill.peakCost).toBe(0);
     expect(bill.totalAmount).toBe(637.2);
   });
 
   it('splits energy across the peak boundary', () => {
-    const bill = calculateBill({ startedAt: at(17, 30), durationMin: 60, energyKwh: 20, idleMinutes: 0, tariff });
+    const bill = calculateBill({ startedAt: at(17, 30), durationMin: 60, energyKwh: 20, idleMinutes: 0, prices });
     expect(bill.peakKwh).toBe(10);
     expect(bill.offPeakKwh).toBe(10);
   });
 
   it('applies no idle fee within the 10 minute grace period', () => {
-    const bill = calculateBill({ startedAt: at(10), durationMin: 30, energyKwh: 10, idleMinutes: 10, tariff });
+    const bill = calculateBill({ startedAt: at(10), durationMin: 30, energyKwh: 10, idleMinutes: 10, prices });
     expect(bill.idleFee).toBe(0);
   });
 
   it('charges idle fee only for minutes beyond the grace period', () => {
-    const bill = calculateBill({ startedAt: at(10), durationMin: 30, energyKwh: 10, idleMinutes: 16, tariff });
+    const bill = calculateBill({ startedAt: at(10), durationMin: 30, energyKwh: 10, idleMinutes: 16, prices });
     expect(bill.idleFee).toBe(30);
   });
 });
