@@ -20,7 +20,7 @@ Follow the sections **in order**; each one creates the data the next needs. **Ac
 | 1.1 | Look at the header | Charge Hub · Find a charger · Host a charger · Platform · Resources … **Sign in** · **Sign up**. No "Talk to an expert", no "Manage a fleet" |
 | 1.2 | Click each header link | The page **scrolls** to that section on the same page (the URL shows `/#find`, `/#host`…) |
 | 1.3 | Find a charger section | "No stations match yet"; network numbers all 0 |
-| 1.4 | Resources section | Spec table (CCS2/CHAdeMO 50 kW min, Type 2 22 kW min, Bharat DC-001 15 kW, Bharat AC-001 10 kW / 3 guns), worked bill ₹525.10, booking policy, FAQ, support hours, limitations |
+| 1.4 | Resources section | Spec table (CCS2/CHAdeMO 50 kW min, Type 2 22 kW min, Bharat DC-001 15 kW, Bharat AC-001 10 kW / 3 guns), worked bill ₹424.80 (20 kWh × ₹18 + GST), booking policy, FAQ, support hours, limitations |
 | 1.5 | Phone width (DevTools) | ☰ menu; no sideways scroll |
 
 ## 2. Administrator setup (sign in as admin@evhub.com)
@@ -57,15 +57,15 @@ Follow the sections **in order**; each one creates the data the next needs. **Ac
 | # | Action | Expected |
 |---|---|---|
 | 5.1 | Sign in | Menu: Overview, **My stations**, Bookings, Charging sessions, Invoices, Maintenance, Help & support |
-| 5.2 | My stations → **Add station** → `BLR-001`, Kapoor Mall Chargers, MG Road, Bengaluru, 12.97, 77.6, 00:00–23:59. Prices: peak hours **22 → 18** | Live error "Must be after peak start". Change to 18 → 22, idle fee ₹5 → saves. Card: "No chargers yet…", "Peak 18:00–22:00" |
+| 5.2 | My stations → **Add station** → `BLR-001`, Kapoor Mall Chargers, MG Road, Bengaluru, 12.97, 77.6, 00:00–23:59 | Station card: "No chargers yet…" |
 | 5.3 | Add station with ID `BLR-001` again | "Station ID BLR-001 already exists" (Rule 1) |
 | 5.4 | Add charger `BLR-001-C1` **CCS2** 30 kW | Live error "CCS2 must be 50–350 kW"; 60 kW is accepted |
-| 5.4a | Same dialog: **Price for CCS2** fields appear. Price ₹18, peak ₹12 | Live error "Cannot be lower than the normal price". Peak ₹24 → saves. Card shows "CCS2 · 60 kW · ₹18.00/kWh" |
-| 5.5 | Add `BLR-001-C4` **CCS2** 120 kW | No price fields: "CCS2 price at this station: ₹18/kWh, peak ₹24/kWh" (one price per charging type) |
-| 5.5a | Add `BLR-001-C2` Type 2 22 kW (price ₹14 / peak ₹18) and `BLR-001-C3` Bharat DC-001 15 kW (₹12 / ₹15) | Both save with their own price |
-| 5.5b | Card → **Prices** → clear the Type 2 row → Save | Live error "Price is required" (Type 2 chargers exist) |
-| 5.5c | Prices → CCS2 ₹20 / ₹26, idle ₹4 → Save | "Prices saved for BLR-001"; card shows ₹20.00/kWh for CCS2 |
-| 5.5d | 🗄 DB **Price** | 3 rows for BLR-001: CCS2 20/26, TYPE2 14/18, BHARAT_DC001 12/15 |
+| 5.4a | Same dialog: a **Price per kWh for CCS2** box appears. Type `0` | Live error "Enter ₹1–100 per kWh". Type `18` → saves. Card shows "CCS2 · 60 kW · ₹18.00/kWh" |
+| 5.5 | Add `BLR-001-C4` **CCS2** 120 kW | No price fields: "CCS2 price at this station: ₹18/kWh" (one price per charging type) |
+| 5.5a | Add `BLR-001-C2` Type 2 22 kW (price ₹14) and `BLR-001-C3` Bharat DC-001 15 kW (₹12) | Both save with their own price |
+| 5.5b | Card → **Prices** → clear the Type 2 box | Live error "Price is required" (Type 2 chargers exist) |
+| 5.5c | Prices → CCS2 ₹20 → Save | "Prices saved for BLR-001"; card shows ₹20.00/kWh for CCS2 |
+| 5.5d | 🗄 DB **Price** | 3 rows for BLR-001: CCS2 20, TYPE2 14, BHARAT_DC001 12 |
 | 5.6 | Sign in as stationowner@evhub.com | **My stations** is empty: they don't see Neha's station |
 | 5.7 | Sign in as admin → Stations | BLR-001 shows "Owner: Neha Kapoor · Kapoor EV Parks" |
 | 5.8 | 🗄 DB **Station** | `ownerId` = Neha's user id |
@@ -81,7 +81,7 @@ Follow the sections **in order**; each one creates the data the next needs. **Ac
 | 6.6 | Bookings → Reschedule tomorrow's booking → 11:00; then Cancel it | Both work |
 | 6.7 | Bookings → ▶ Start on the next-slot booking | Sessions page; kWh climbs live |
 | 6.8 | Walk-in with the Nexon on C4 | "This vehicle is already charging in another session" |
-| 6.9 | Stop → idle 14 min | Invoice uses BLR-001's CCS2 price (₹20 normal / ₹26 peak): energy split, idle fee (14−10)×₹4 = ₹16, GST, total (Rules 8–10) |
+| 6.9 | Stop | Invoice: energy × ₹20 (BLR-001's CCS2 price) + 18% GST = total (Rules 8–10) |
 | 6.10 | Invoices → Pay → UPI | Paid |
 | 6.11 | Try http://localhost:5173/approvals | Redirected to Overview |
 
@@ -111,8 +111,8 @@ Follow the sections **in order**; each one creates the data the next needs. **Ac
 ## 10. Help & support → manager replies
 | # | Action | Expected |
 |---|---|---|
-| 10.1 | As owner@evhub.com → Help & support → New request: Billing, `Question about idle fee`, 20+ character message | Card "Waiting for a reply" |
-| 10.2 | As manager → Enquiries → click the row → reply `Idle fee applies after 10 free minutes.`, status Resolved → Save | Moves to Resolved |
+| 10.1 | As owner@evhub.com → Help & support → New request: Billing, `Question about my invoice`, 20+ character message | Card "Waiting for a reply" |
+| 10.2 | As manager → Enquiries → click the row → reply `Your bill is energy × price per kWh + 18% GST.`, status Resolved → Save | Moves to Resolved |
 | 10.3 | As owner → Help & support | Shows the manager's reply |
 | 10.4 | As admin, the menu has no Enquiries or Maintenance | Correct: the manager only |
 
@@ -141,7 +141,7 @@ Follow the sections **in order**; each one creates the data the next needs. **Ac
 ```powershell
 npm test
 ```
-Expected: server **19 passed**, client **5 passed**.
+Expected: server **16 passed**, client **5 passed**.
 ```powershell
 npm --prefix server run db:seed
 ```

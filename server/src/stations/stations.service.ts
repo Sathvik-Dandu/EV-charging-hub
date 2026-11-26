@@ -2,7 +2,6 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateStationDto, StationPricesDto, StationSearchDto, UpdateStationDto } from './dto/station.dto';
-import { peakHoursError, priceError } from '../chargers/charger.rules';
 import { AuthUser } from '../common/auth.decorators';
 import { ROLES } from '../common/business-rules';
 import { ownsStation, scope } from '../common/scope';
@@ -65,8 +64,6 @@ export class StationsService {
     if (await this.prisma.station.findUnique({ where: { code } })) {
       throw new ConflictException(`Station ID ${code} already exists`);
     }
-    const hoursError = peakHoursError(dto);
-    if (hoursError) throw new BadRequestException(hoursError);
     const station = await this.prisma.station.create({ data: { ...dto, code, ownerId: user.id } });
     await this.audit.log(user.id, 'CREATE', 'Station', station.id, { code });
     return station;
@@ -75,10 +72,6 @@ export class StationsService {
   async update(id: number, dto: UpdateStationDto, user: AuthUser) {
     const current = await this.findOne(id);
     if (!ownsStation(user, current)) throw new ForbiddenException('You can only edit your own stations');
-    const changesPrices = ['peakStartHour', 'peakEndHour', 'idleFeePerMin'].some((k) => k in dto);
-    if (changesPrices && user.role !== ROLES.STATION_OWNER) throw new ForbiddenException('Only the station owner sets prices');
-    const hoursError = peakHoursError({ ...current, ...dto });
-    if (hoursError) throw new BadRequestException(hoursError);
     if (dto.code) {
       const clash = await this.prisma.station.findFirst({ where: { code: dto.code.toUpperCase(), NOT: { id } } });
       if (clash) throw new ConflictException(`Station ID ${dto.code} already exists`);
@@ -96,29 +89,19 @@ export class StationsService {
     if (user.role !== ROLES.STATION_OWNER || !ownsStation(user, station)) {
       throw new ForbiddenException('Only the owner of this station can set its prices');
     }
-    const hoursError = peakHoursError(dto);
-    if (hoursError) throw new BadRequestException(hoursError);
     const types = dto.prices.map((p) => p.connectorType);
     if (new Set(types).size !== types.length) throw new BadRequestException('Each charging type can have only one price');
-    for (const price of dto.prices) {
-      const error = priceError(price);
-      if (error) throw new BadRequestException(`${price.connectorType}: ${error}`);
-    }
     const inUse = [...new Set(station.chargers.map((c) => c.connectorType))];
     const missing = inUse.filter((t) => !types.includes(t));
     if (missing.length) throw new BadRequestException(`A price is needed for ${missing.join(', ')} (chargers of this type exist)`);
 
     await this.prisma.$transaction([
-      this.prisma.station.update({
-        where: { id },
-        data: { peakStartHour: dto.peakStartHour, peakEndHour: dto.peakEndHour, idleFeePerMin: dto.idleFeePerMin },
-      }),
       this.prisma.price.deleteMany({ where: { stationId: id, connectorType: { notIn: types } } }),
       ...dto.prices.map((p) =>
         this.prisma.price.upsert({
           where: { stationId_connectorType: { stationId: id, connectorType: p.connectorType } },
           create: { stationId: id, ...p },
-          update: { pricePerKwh: p.pricePerKwh, peakPricePerKwh: p.peakPricePerKwh },
+          update: { pricePerKwh: p.pricePerKwh },
         }),
       ),
     ]);

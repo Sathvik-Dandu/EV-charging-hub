@@ -17,7 +17,7 @@ export class CreateEnquiryDto {
   @MaxLength(120)
   subject: string;
 
-  @ApiProperty({ example: 'My invoice INV-... shows the idle fee even though I unplugged on time.' })
+  @ApiProperty({ example: 'My invoice INV-... shows more kWh than my car received.' })
   @Transform(trim)
   @IsString()
   @MinLength(20, { message: 'Message must have at least 20 characters' })
@@ -30,7 +30,7 @@ export class ReplyEnquiryDto {
   @IsEnum(EnquiryStatus)
   status: EnquiryStatus;
 
-  @ApiPropertyOptional({ example: 'We have refunded the idle fee to your account.' })
+  @ApiPropertyOptional({ example: 'We checked the session and corrected your invoice.' })
   @IsOptional()
   @Transform(trim)
   @IsString()

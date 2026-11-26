@@ -52,7 +52,7 @@ export class SessionsService {
     throw new BadRequestException('Provide a booking reference, or a charger and vehicle for walk-in charging');
   }
 
-  async stop(id: number, idleMinutes: number, user: AuthUser) {
+  async stop(id: number, user: AuthUser) {
     const session = await this.prisma.chargingSession.findUnique({
       where: { id },
       include: { vehicle: true, charger: { include: { station: { include: { prices: true } } } } },
@@ -62,23 +62,10 @@ export class SessionsService {
     if (user.role === ROLES.EV_OWNER && session.vehicle.ownerId !== user.id) throw new ForbiddenException('Not your session');
     if (!ownsStation(user, session.charger.station)) throw new ForbiddenException('This session is not at your station');
 
-    const { station } = session.charger;
-    const price = station.prices.find((p) => p.connectorType === session.charger.connectorType);
+    const price = session.charger.station.prices.find((p) => p.connectorType === session.charger.connectorType);
     if (!price) throw new BadRequestException(`Station has no ${session.charger.connectorType} price set`);
     const live = simulateEnergy(session.startedAt, session.charger.powerKw, session.vehicle.batteryKwh);
-    const bill = calculateBill({
-      startedAt: session.startedAt,
-      durationMin: live.durationMin,
-      energyKwh: live.energyKwh,
-      idleMinutes,
-      prices: {
-        pricePerKwh: price.pricePerKwh,
-        peakPricePerKwh: price.peakPricePerKwh,
-        peakStartHour: station.peakStartHour,
-        peakEndHour: station.peakEndHour,
-        idleFeePerMin: station.idleFeePerMin,
-      },
-    });
+    const bill = calculateBill(live.energyKwh, price.pricePerKwh);
 
     const completed = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.chargingSession.update({
@@ -88,7 +75,6 @@ export class SessionsService {
           endedAt: new Date(),
           energyKwh: live.energyKwh,
           durationMin: live.durationMin,
-          idleMinutes,
           invoice: {
             create: {
               invoiceNo: generateCode('INV'),

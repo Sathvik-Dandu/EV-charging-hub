@@ -64,8 +64,8 @@ Example: "Let the manager see only open tickets" → `tickets` (line 29) add `if
 ### A5. Sign-up roles and approval
 | Change | File : line |
 |---|---|
-| Which roles can sign up | `server/src/common/business-rules.ts:32` (`SELF_SIGNUP_ROLES`) + tabs in `client/src/pages/RegisterPage.tsx:18-22` + `client/src/schemas/forms.ts:53` |
-| Which roles need admin approval | `server/src/common/business-rules.ts:34` (`ROLES_NEEDING_APPROVAL`). Remove `TECHNICIAN` and technicians can sign in immediately |
+| Which roles can sign up | `server/src/common/business-rules.ts:30` (`SELF_SIGNUP_ROLES`) + tabs in `client/src/pages/RegisterPage.tsx:18-22` + `client/src/schemas/forms.ts:53` |
+| Which roles need admin approval | `server/src/common/business-rules.ts:32` (`ROLES_NEEDING_APPROVAL`). Remove `TECHNICIAN` and technicians can sign in immediately |
 | Business name required for station owners | server `server/src/auth/auth.service.ts:23`, client `client/src/schemas/forms.ts:57` |
 | "Request sent" message | `server/src/auth/auth.service.ts:42` |
 
@@ -85,14 +85,13 @@ Example: "Let the manager see only open tickets" → `tickets` (line 29) add `if
 |---|---|---|
 | 3 upcoming bookings | `server/src/common/business-rules.ts:2` | `client/src/pages/DashboardPage.tsx` (`/ 2`), `client/src/pages/public/content.ts:2` |
 | No-show after 20 min | `business-rules.ts:3` | `content.ts:3` |
-| Idle fee after 5 min | `business-rules.ts:4` | `client/src/pages/SessionsPage.tsx:22`, `content.ts:4` |
-| 45-minute slot | `business-rules.ts:5` | `client/src/schemas/forms.ts:5` |
-| Book 14 days ahead | `business-rules.ts:6` | `client/src/components/dialogs/BookSlotDialog.tsx:17` |
-| GST 12% | `business-rules.ts:8` | `BookSlotDialog.tsx:72` (`1.18` → `1.12`) |
+| 45-minute slot | `business-rules.ts:4` | `client/src/schemas/forms.ts:5` |
+| Book 14 days ahead | `business-rules.ts:5` | `client/src/components/dialogs/BookSlotDialog.tsx:17` |
+| GST 12% | `business-rules.ts:7` | `BookSlotDialog.tsx:70` (`1.18` → `1.12`) |
 | Start 15 min early | `server/src/sessions/sessions.service.ts:16` | `client/src/pages/BookingsPage.tsx:22` |
-| Walk-in blocked within 2 h | `sessions.service.ts:155` | none |
+| Walk-in blocked within 2 h | `sessions.service.ts:141` | none |
 | Allow cancel after slot start | `server/src/bookings/bookings.service.ts:113-115` (delete) | none |
-| Idle fee formula / 100% charge | `server/src/sessions/billing.ts:37` / `:56` | none |
+| Bill formula / 100% charge | `server/src/sessions/billing.ts:5-9` / `:14` | none |
 | Demo charging speed | `server/.env` `SIMULATION_SPEED` | none |
 | No-show sweep interval | `server/src/bookings/bookings.processor.ts:18` | none |
 | Ticket status order | `server/src/maintenance/maintenance.service.ts:14` | none |
@@ -100,25 +99,22 @@ Example: "Let the manager see only open tickets" → `tickets` (line 29) add `if
 ---
 
 ## B2. Prices (set by the station owner)
-Each station has **peak hours** and an **idle fee per minute**; each charging type at a station has a **price per kWh** and a **peak price per kWh** (table `Price`).
+Each charging type at a station has **one price per kWh** (table `Price`). Bill = energy × price + 18% GST.
 
 | Panel asks… | Server | Client |
 |---|---|---|
 | Who may set prices | `server/src/common/permissions.ts:14` (`prices:manage`) | `client/src/config/permissions.ts:18` |
-| Max price per kWh / max idle fee | `server/src/common/business-rules.ts:9` / `:10` | `client/src/schemas/forms.ts` (`checkPrice`, `₹1–100`; idle `max(50)`) |
-| "Peak price can't be lower than normal" rule | `server/src/chargers/charger.rules.ts:3-5` (`priceError`) | `client/src/schemas/forms.ts` (`checkPrice`) |
-| Peak hours must end after they start | `server/src/chargers/charger.rules.ts:7-9` (`peakHoursError`) | `stationSchema` / `pricesSchema` in `client/src/schemas/forms.ts` |
-| Save prices endpoint (`PUT /api/stations/:id/prices`) | `server/src/stations/stations.service.ts` `setPrices()` | `client/src/components/dialogs/StationDialogs.tsx` `PricesDialog` |
-| Price asked when adding the first charger of a type | `server/src/chargers/chargers.service.ts` `create()` | `AddChargerDialog` in `StationDialogs.tsx` |
-| Which price a bill uses | `server/src/sessions/sessions.service.ts` `stop()` (station's price for the charger's type) | none |
-| Default peak hours / idle fee for new stations | `server/prisma/schema.prisma` `Station` (`@default(18)`, `22`, `5`) | `AddStationDialog` `defaultValues` |
-
+| Max price per kWh (₹100) | `server/src/common/business-rules.ts:8` | `client/src/schemas/forms.ts:98` (`checkPrice`) |
+| Bill formula | `server/src/sessions/billing.ts:5` (`calculateBill`) | estimate in `client/src/components/dialogs/BookSlotDialog.tsx:70` |
+| Save prices (`PUT /api/stations/:id/prices`) | `server/src/stations/stations.service.ts:87` (`setPrices`) | `PricesDialog` in `client/src/components/dialogs/StationDialogs.tsx` |
+| Price asked when adding the first charger of a type | `server/src/chargers/chargers.service.ts:24` (`create`) | `AddChargerDialog` in `StationDialogs.tsx`, rule `client/src/schemas/forms.ts:107` |
+| Which price a bill uses | `server/src/sessions/sessions.service.ts:55` (`stop`: the station's price for the charger's type) | none |
 ---
 
 ## C. Charger types
 | Panel asks… | Server | Client |
 |---|---|---|
-| Change kW limit | `server/src/common/business-rules.ts:15-19` | `client/src/config/connectors.ts:4-8` |
+| Change kW limit | `server/src/common/business-rules.ts:13-17` | `client/src/config/connectors.ts:4-8` |
 | Add a type (e.g. GBT) | `server/prisma/schema.prisma:11` enum → migrate; add to `CONNECTOR_SPECS` (`business-rules.ts`) | `client/src/api/types.ts:3`, `client/src/config/connectors.ts`, `client/src/schemas/forms.ts:4` |
 
 ---

@@ -1,7 +1,6 @@
 export const BUSINESS_RULES_TEXT = {
   maxUpcoming: '2 upcoming bookings',
   noShowGrace: '15 minutes',
-  idleGrace: '10 minutes',
   slotDurations: '30, 60, 90 or 120 minutes',
   advanceDays: '7 days',
   earlyStart: '30 minutes',
@@ -25,8 +24,8 @@ export const FAQS = [
     a: 'No. The booking only goes through when the charger connector matches the connector saved on your vehicle.',
   },
   {
-    q: 'How is peak pricing applied?',
-    a: 'Each station owner sets a price per kWh for every charging type, plus a higher peak-hour price. Energy delivered during peak hours is billed at the peak price and the rest at the normal price, minute by minute.',
+    q: 'How is my bill calculated?',
+    a: 'Each station owner sets one price per kWh for every charging type. Your bill is the energy delivered × that price, plus 18% GST. No hidden fees.',
   },
   {
     q: 'What if a charger is faulty?',

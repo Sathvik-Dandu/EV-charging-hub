@@ -105,7 +105,7 @@ export default function HomePage() {
               steps={[
                 { title: 'Find', text: 'Filter stations by city and connector. Status updates live as chargers change.' },
                 { title: 'Book', text: 'Pick a 30–120 minute slot. We check your connector and block double bookings.' },
-                { title: 'Charge & pay', text: 'Start with your booking reference. The invoice splits peak, off-peak and idle time.' },
+                { title: 'Charge & pay', text: 'Start with your booking reference. The invoice is simply energy × price per kWh + GST.' },
               ]}
             />
           </Box>
@@ -198,14 +198,12 @@ export default function HomePage() {
                 <CardContent sx={{ p: 3 }}>
                   <Typography variant="h6">How your bill is calculated</Typography>
                   <Typography color="text.secondary" sx={{ mt: 1 }}>
-                    Example prices: ₹18/kWh normal, ₹24/kWh peak (18:00–22:00), idle ₹5/min after {BUSINESS_RULES_TEXT.idleGrace} free.
+                    Example: a CCS2 charger priced at ₹18/kWh delivers 20 kWh.
                   </Typography>
                   <Stack spacing={1} sx={{ mt: 2 }}>
                     {[
-                      ['10 kWh before 18:00', '10 × ₹18 = ₹180.00'],
-                      ['10 kWh after 18:00', '10 × ₹24 = ₹240.00'],
-                      ['Plugged in 15 min after full', '(15 − 10) × ₹5 = ₹25.00'],
-                      ['GST 18%', '₹80.10'],
+                      ['Energy', '20 kWh × ₹18 = ₹360.00'],
+                      ['GST 18%', '₹64.80'],
                     ].map(([k, v]) => (
                       <Stack key={k} direction="row" sx={{ justifyContent: 'space-between', gap: 2 }}>
                         <Typography>{k}</Typography>
@@ -214,7 +212,7 @@ export default function HomePage() {
                     ))}
                     <Stack direction="row" sx={{ justifyContent: 'space-between', pt: 1, borderTop: `1px solid ${brand.mist}` }}>
                       <Typography variant="h6">Total</Typography>
-                      <Typography variant="h6">₹525.10</Typography>
+                      <Typography variant="h6">₹424.80</Typography>
                     </Stack>
                   </Stack>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>

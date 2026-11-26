@@ -119,25 +119,22 @@ model Vehicle {
 }
 
 model Station {
-  id            Int       @id @default(autoincrement())
-  code          String    @unique
-  name          String
-  address       String
-  city          String
-  latitude      Float
-  longitude     Float
-  opensAt       String    @default("00:00")
-  closesAt      String    @default("23:59")
-  isActive      Boolean   @default(true)
-  peakStartHour Int       @default(18)
-  peakEndHour   Int       @default(22)
-  idleFeePerMin Float     @default(5)
-  ownerId       Int?
-  owner         User?     @relation("StationOwner", fields: [ownerId], references: [id])
-  chargers      Charger[]
-  prices        Price[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id        Int       @id @default(autoincrement())
+  code      String    @unique
+  name      String
+  address   String
+  city      String
+  latitude  Float
+  longitude Float
+  opensAt   String    @default("00:00")
+  closesAt  String    @default("23:59")
+  isActive  Boolean   @default(true)
+  ownerId   Int?
+  owner     User?     @relation("StationOwner", fields: [ownerId], references: [id])
+  chargers  Charger[]
+  prices    Price[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([city])
 }
@@ -174,14 +171,13 @@ model ChargerStatusLog {
 }
 
 model Price {
-  id              Int           @id @default(autoincrement())
-  stationId       Int
-  station         Station       @relation(fields: [stationId], references: [id], onDelete: Cascade)
-  connectorType   ConnectorType
-  pricePerKwh     Float
-  peakPricePerKwh Float
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id            Int           @id @default(autoincrement())
+  stationId     Int
+  station       Station       @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  connectorType ConnectorType
+  pricePerKwh   Float
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@unique([stationId, connectorType])
 }
@@ -219,7 +215,6 @@ model ChargingSession {
   endedAt     DateTime?
   energyKwh   Float         @default(0)
   durationMin Int           @default(0)
-  idleMinutes Int           @default(0)
   status      SessionStatus @default(ACTIVE)
   invoice     Invoice?
   createdAt   DateTime      @default(now())
@@ -233,11 +228,8 @@ model Invoice {
   invoiceNo     String          @unique
   sessionId     Int             @unique
   session       ChargingSession @relation(fields: [sessionId], references: [id])
-  offPeakKwh    Float
-  peakKwh       Float
+  pricePerKwh   Float
   energyCost    Float
-  peakCost      Float
-  idleFee       Float
   taxAmount     Float
   totalAmount   Float
   paymentStatus PaymentStatus   @default(PENDING)

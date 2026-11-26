@@ -7,13 +7,13 @@ Two SQL files, both run in **Supabase Dashboard → SQL Editor**:
 | `setup.sql` | New or empty database. Creates 10 enums, 13 tables, indexes, foreign keys, the 5 roles and the 5 demo accounts |
 | `update-prices.sql` | Your database was created **before** the Prices change (it still has a `Tariff` table). Keeps all data |
 
-## Update an existing database to station-owner prices (`update-prices.sql`)
+## Update an existing database to simple prices (`update-prices.sql`)
 What it does, in one transaction (if any step fails, nothing changes):
-1. Adds `peakStartHour`, `peakEndHour` and `idleFeePerMin` to `Station`, filled from each station's old tariff.
-2. Creates the `Price` table: one row per station and charging type (`pricePerKwh`, `peakPricePerKwh`).
-3. Copies the old tariff rates into `Price` for every charging type each station already has.
-4. Drops `Station.tariffId` and the `Tariff` table, and updates the two role descriptions.
-5. Shows every station with its prices.
+1. Creates the `Price` table: one row per station and charging type, with one `pricePerKwh`.
+2. Copies each station's old tariff rate into `Price` for every charging type it already has.
+3. Drops `Station.tariffId` and the `Tariff` table.
+4. Simplifies `Invoice`: keeps the price used and one energy cost (old peak and idle amounts are added into it, so old totals don't change), and drops `ChargingSession.idleMinutes`.
+5. Updates the two role descriptions and shows every station with its prices.
 
 Then tell Prisma this migration is applied. Run once, from the `server` folder:
 ```powershell

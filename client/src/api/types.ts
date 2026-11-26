@@ -23,7 +23,6 @@ export interface StationPrice {
   id: number;
   connectorType: ConnectorType;
   pricePerKwh: number;
-  peakPricePerKwh: number;
 }
 
 export interface Charger {
@@ -48,9 +47,6 @@ export interface Station {
   opensAt: string;
   closesAt: string;
   isActive: boolean;
-  peakStartHour: number;
-  peakEndHour: number;
-  idleFeePerMin: number;
   prices: StationPrice[];
   ownerId: number | null;
   owner?: { fullName: string; organization: string | null } | null;
@@ -83,11 +79,8 @@ export interface Booking {
 export interface Invoice {
   id: number;
   invoiceNo: string;
-  offPeakKwh: number;
-  peakKwh: number;
+  pricePerKwh: number;
   energyCost: number;
-  peakCost: number;
-  idleFee: number;
   taxAmount: number;
   totalAmount: number;
   paymentStatus: 'PENDING' | 'PAID';
@@ -103,11 +96,10 @@ export interface ChargingSession {
   endedAt: string | null;
   energyKwh: number;
   durationMin: number;
-  idleMinutes: number;
   status: 'ACTIVE' | 'COMPLETED';
   batteryFull?: boolean;
   vehicle: Pick<Vehicle, 'registrationNo' | 'make' | 'model' | 'batteryKwh'>;
-  charger: { code: string; powerKw: number; connectorType: ConnectorType; station: { name: string; city: string; idleFeePerMin?: number } };
+  charger: { code: string; powerKw: number; connectorType: ConnectorType; station: { name: string; city: string } };
   booking: { reference: string } | null;
   invoice: Invoice | null;
 }

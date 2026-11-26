@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateChargerDto } from './dto/charger.dto';
-import { chargerPowerError, priceError } from './charger.rules';
+import { chargerPowerError } from './charger.rules';
 import { AuthUser } from '../common/auth.decorators';
 import { ownsStation, scope } from '../common/scope';
 
@@ -32,22 +32,19 @@ export class ChargersService {
     if (!station) throw new NotFoundException('Station not found');
     if (!ownsStation(user, station)) throw new ForbiddenException('You can only add chargers to your own stations');
 
-    const { pricePerKwh, peakPricePerKwh, ...chargerData } = dto;
+    const { pricePerKwh, ...chargerData } = dto;
     const key = { stationId: dto.stationId, connectorType: dto.connectorType };
-    const hasPrice = pricePerKwh !== undefined && peakPricePerKwh !== undefined;
-    if (hasPrice) {
-      const error = priceError({ pricePerKwh, peakPricePerKwh });
-      if (error) throw new BadRequestException(error);
-    } else if (!(await this.prisma.price.findUnique({ where: { stationId_connectorType: key } }))) {
-      throw new BadRequestException('Set the price per kWh and peak price for this charging type');
+    const hasPrice = pricePerKwh !== undefined;
+    if (!hasPrice && !(await this.prisma.price.findUnique({ where: { stationId_connectorType: key } }))) {
+      throw new BadRequestException('Set the price per kWh for this charging type');
     }
 
     const charger = await this.prisma.$transaction(async (tx) => {
       if (hasPrice) {
         await tx.price.upsert({
           where: { stationId_connectorType: key },
-          create: { ...key, pricePerKwh, peakPricePerKwh },
-          update: { pricePerKwh, peakPricePerKwh },
+          create: { ...key, pricePerKwh },
+          update: { pricePerKwh },
         });
       }
       return tx.charger.create({

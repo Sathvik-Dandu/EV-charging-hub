@@ -26,7 +26,7 @@ A shop or library app is mostly add/edit/delete screens. This project has **12 B
 | No double booking of a charger | Needs a **database transaction + Redis lock** so two people clicking "Book" at the same moment can't both win |
 | Connector must match the vehicle | Cross-checks two different tables before saving |
 | Auto-cancel after 15 minutes no-show | Needs **background jobs** (BullMQ) that run on a timer, not on a button click |
-| Station-owner prices + peak hours + idle fee + GST | Each owner prices each charging type; a real **billing calculation** splits energy minute by minute between peak and normal hours |
+| Station-owner prices + GST | Each owner sets one price per kWh for each charging type; the bill is energy × price + 18% GST |
 | Every status change logged with time | An **audit trail**, as in real enterprise software |
 | Charger power limits per type | CCS2/CHAdeMO ≥ 50 kW, Type 2 ≥ 22 kW, Bharat DC-001 = 15 kW, Bharat AC-001 = 10 kW |
 
@@ -56,7 +56,7 @@ The BRD's marks go to functional coverage, architecture, backend, database desig
 A panel can watch it work end to end in about 5 minutes:
 1. A driver books a slot.
 2. The charging meter climbs live.
-3. An invoice is generated with the peak/idle split.
+3. An invoice is generated: energy × price per kWh + GST.
 4. A fault is reported, and the charger turns red on every screen.
 5. A technician fixes it, and the charger turns green again.
 
@@ -164,15 +164,14 @@ Validation limits are enforced by the server DTOs (`server/src/*/dto`, `server/s
 | createdAt / updatedAt | timestamp | automatic |
 
 ### 3.4 Price (set by the station owner)
-One row per station **and** charging type. Example: BLR-001 has a CCS2 row (₹20 / ₹26) and a Type 2 row (₹14 / ₹18).
+One row per station **and** charging type. Example: BLR-001 has a CCS2 row (₹20) and a Type 2 row (₹14).
 
 | Column | Type | Rules / limits |
 |---|---|---|
 | id | Int PK | auto |
 | stationId | Int FK → Station | deleting a station deletes its prices (`ON DELETE CASCADE`) |
 | connectorType | enum | CCS2, CHADEMO, TYPE2, BHARAT_DC001, BHARAT_AC001 |
-| pricePerKwh | double | ₹ per kWh in normal hours, 1–100 |
-| peakPricePerKwh | double | ₹ per kWh in peak hours, 1–100, not lower than pricePerKwh |
+| pricePerKwh | double | ₹ per kWh, 1–100 |
 | createdAt / updatedAt | timestamp | automatic |
 
 **Unique** on (stationId, connectorType): a station can't have two prices for the same type. Every charging type that has a charger at the station must have a price.
@@ -189,9 +188,6 @@ One row per station **and** charging type. Example: BLR-001 has a CCS2 row (₹2
 | longitude | double | −180 to 180 |
 | opensAt / closesAt | text | `HH:mm` (00:00–23:59); defaults 00:00 and 23:59 |
 | isActive | boolean | default true |
-| peakStartHour | integer | 0–23, default 18 |
-| peakEndHour | integer | 1–24, default 22, must be greater than peakStartHour |
-| idleFeePerMin | double | ₹ per minute after the 10 free minutes, 0–50, default 5 |
 | ownerId | Int FK → User, optional | the station owner who added it (only station owners add stations) |
 | createdAt / updatedAt | timestamp | automatic |
 
@@ -242,7 +238,6 @@ Each EV owner can have **at most 2** CONFIRMED future bookings.
 | startedAt / endedAt | timestamp | endedAt is filled when stopped |
 | energyKwh | double | default 0; capped at 80% of battery capacity |
 | durationMin | integer | charging minutes |
-| idleMinutes | integer | 0–600; minutes plugged in after charging finished |
 | status | enum | ACTIVE (default), COMPLETED |
 | createdAt / updatedAt | timestamp | automatic |
 
@@ -252,9 +247,8 @@ Each EV owner can have **at most 2** CONFIRMED future bookings.
 | id | Int PK | auto |
 | invoiceNo | text, **unique** | generated, e.g. `INV-261125-K2P4` |
 | sessionId | Int FK → ChargingSession, **unique** | exactly one invoice per session |
-| offPeakKwh / peakKwh | double | energy split by the station's peak hours |
-| energyCost / peakCost | double | ₹, rounded to 2 decimals |
-| idleFee | double | (idle minutes − 10) × idle rate, never below 0 |
+| pricePerKwh | double | the price used for this bill (copied, so later price changes don't alter old invoices) |
+| energyCost | double | energy kWh × pricePerKwh, rounded to 2 decimals |
 | taxAmount | double | 18% GST |
 | totalAmount | double | ₹ total |
 | paymentStatus | enum | PENDING (default), PAID |

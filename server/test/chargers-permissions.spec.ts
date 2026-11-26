@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chargerPowerError, peakHoursError, priceError } from '../src/chargers/charger.rules';
+import { chargerPowerError } from '../src/chargers/charger.rules';
 import { can } from '../src/common/permissions';
 
 describe('Charger power specifications', () => {
@@ -15,17 +15,6 @@ describe('Charger power specifications', () => {
     expect(chargerPowerError('BHARAT_DC001', 15)).toBeNull();
     expect(chargerPowerError('BHARAT_DC001', 20)).toMatch(/exactly 15/);
     expect(chargerPowerError('BHARAT_AC001', 10)).toBeNull();
-  });
-});
-
-describe('Prices', () => {
-  it('does not allow a peak price lower than the normal price', () => {
-    expect(priceError({ pricePerKwh: 20, peakPricePerKwh: 15 })).toMatch(/cannot be lower/);
-    expect(priceError({ pricePerKwh: 20, peakPricePerKwh: 20 })).toBeNull();
-  });
-  it('requires peak hours to end after they start', () => {
-    expect(peakHoursError({ peakStartHour: 22, peakEndHour: 18 })).toMatch(/end after/);
-    expect(peakHoursError({ peakStartHour: 18, peakEndHour: 22 })).toBeNull();
   });
 });
 

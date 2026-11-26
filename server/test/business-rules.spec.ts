@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { calculateBill } from '../src/sessions/billing';
 import { overlaps, validateSlot } from '../src/bookings/booking.rules';
 
-const prices = { pricePerKwh: 18, peakPricePerKwh: 24, peakStartHour: 18, peakEndHour: 22, idleFeePerMin: 5 };
 const at = (h: number, m = 0) => new Date(2026, 10, 25, h, m);
 
 describe('Overlap detection (Rule 2)', () => {
@@ -31,27 +30,20 @@ describe('Slot validation', () => {
   });
 });
 
-describe('Billing (Rules 8, 9)', () => {
-  it('charges off-peak rate outside peak hours', () => {
-    const bill = calculateBill({ startedAt: at(10), durationMin: 60, energyKwh: 30, idleMinutes: 0, prices });
+describe('Billing: kWh x price + 18% GST', () => {
+  it('multiplies energy by the price per kWh and adds GST', () => {
+    const bill = calculateBill(30, 18);
     expect(bill.energyCost).toBe(540);
-    expect(bill.peakCost).toBe(0);
+    expect(bill.taxAmount).toBe(97.2);
     expect(bill.totalAmount).toBe(637.2);
   });
 
-  it('splits energy across the peak boundary', () => {
-    const bill = calculateBill({ startedAt: at(17, 30), durationMin: 60, energyKwh: 20, idleMinutes: 0, prices });
-    expect(bill.peakKwh).toBe(10);
-    expect(bill.offPeakKwh).toBe(10);
+  it('uses the price of the charging type that was used', () => {
+    expect(calculateBill(12, 20).totalAmount).toBe(283.2);
+    expect(calculateBill(12, 14).totalAmount).toBe(198.24);
   });
 
-  it('applies no idle fee within the 10 minute grace period', () => {
-    const bill = calculateBill({ startedAt: at(10), durationMin: 30, energyKwh: 10, idleMinutes: 10, prices });
-    expect(bill.idleFee).toBe(0);
-  });
-
-  it('charges idle fee only for minutes beyond the grace period', () => {
-    const bill = calculateBill({ startedAt: at(10), durationMin: 30, energyKwh: 10, idleMinutes: 16, prices });
-    expect(bill.idleFee).toBe(30);
+  it('charges nothing when no energy was delivered', () => {
+    expect(calculateBill(0, 18).totalAmount).toBe(0);
   });
 });

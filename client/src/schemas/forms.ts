@@ -91,23 +91,17 @@ export const stationSchema = z.object({
   longitude: z.coerce.number<string>().min(-180).max(180),
   opensAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'HH:mm'),
   closesAt: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'HH:mm'),
-  peakStartHour: z.coerce.number<string>().int('Whole hour').min(0, '0–23').max(23, '0–23'),
-  peakEndHour: z.coerce.number<string>().int('Whole hour').min(1, '1–24').max(24, '1–24'),
-  idleFeePerMin: z.coerce.number<string>().min(0, 'Cannot be negative').max(50, 'Max ₹50'),
-}).refine((v) => v.peakEndHour > v.peakStartHour, { message: 'Must be after peak start', path: ['peakEndHour'] });
+});
 
 const priceText = z.string().trim();
 
-function checkPrice(ctx: z.RefinementCtx, path: (string | number)[], price: string, peak: string, required: boolean) {
-  if (!price && !peak) {
-    if (required) ctx.addIssue({ code: 'custom', path: [...path, 'pricePerKwh'], message: 'Price is required' });
+function checkPrice(ctx: z.RefinementCtx, path: (string | number)[], price: string, required: boolean) {
+  if (!price) {
+    if (required) ctx.addIssue({ code: 'custom', path, message: 'Price is required' });
     return;
   }
   const p = Number(price);
-  const k = Number(peak);
-  if (!price || Number.isNaN(p) || p < 1 || p > 100) ctx.addIssue({ code: 'custom', path: [...path, 'pricePerKwh'], message: '₹1–100 per kWh' });
-  if (!peak || Number.isNaN(k) || k < 1 || k > 100) ctx.addIssue({ code: 'custom', path: [...path, 'peakPricePerKwh'], message: '₹1–100 per kWh' });
-  else if (k < p) ctx.addIssue({ code: 'custom', path: [...path, 'peakPricePerKwh'], message: 'Cannot be lower than the normal price' });
+  if (Number.isNaN(p) || p < 1 || p > 100) ctx.addIssue({ code: 'custom', path, message: 'Enter ₹1–100 per kWh' });
 }
 
 export const chargerSchema = (pricedTypes: readonly string[] = []) => z
@@ -116,10 +110,9 @@ export const chargerSchema = (pricedTypes: readonly string[] = []) => z
     connectorType: z.enum(CONNECTORS),
     powerKw: z.coerce.number<string>().positive('Enter the power rating'),
     pricePerKwh: priceText,
-    peakPricePerKwh: priceText,
   })
   .superRefine((v, ctx) => {
-    if (!pricedTypes.includes(v.connectorType)) checkPrice(ctx, [], v.pricePerKwh, v.peakPricePerKwh, true);
+    if (!pricedTypes.includes(v.connectorType)) checkPrice(ctx, ['pricePerKwh'], v.pricePerKwh, true);
     const spec = CONNECTOR_SPECS[v.connectorType];
     if (v.powerKw < spec.minKw || v.powerKw > spec.maxKw) {
       ctx.addIssue({
@@ -131,18 +124,9 @@ export const chargerSchema = (pricedTypes: readonly string[] = []) => z
   });
 
 export const pricesSchema = (typesInUse: readonly string[] = []) => z
-  .object({
-    peakStartHour: z.coerce.number<string>().int('Whole hour').min(0, '0–23').max(23, '0–23'),
-    peakEndHour: z.coerce.number<string>().int('Whole hour').min(1, '1–24').max(24, '1–24'),
-    idleFeePerMin: z.coerce.number<string>().min(0, 'Cannot be negative').max(50, 'Max ₹50'),
-    rates: z.record(z.enum(CONNECTORS), z.object({ pricePerKwh: priceText, peakPricePerKwh: priceText })),
-  })
+  .object({ prices: z.record(z.enum(CONNECTORS), priceText) })
   .superRefine((v, ctx) => {
-    if (v.peakEndHour <= v.peakStartHour) ctx.addIssue({ code: 'custom', path: ['peakEndHour'], message: 'Must be after peak start' });
-    for (const type of CONNECTORS) {
-      const r = v.rates[type];
-      checkPrice(ctx, ['rates', type], r?.pricePerKwh ?? '', r?.peakPricePerKwh ?? '', typesInUse.includes(type));
-    }
+    for (const type of CONNECTORS) checkPrice(ctx, ['prices', type], v.prices[type] ?? '', typesInUse.includes(type));
   });
 
 export const userSchema = z.object({
@@ -158,10 +142,6 @@ export const ticketSchema = z.object({
   title: z.string().min(5, 'Minimum 5 characters').max(100),
   description: z.string().min(10, 'Describe the fault in at least 10 characters'),
   priority: z.enum(PRIORITIES),
-});
-
-export const stopSessionSchema = z.object({
-  idleMinutes: z.coerce.number<string>().int().min(0, 'Cannot be negative').max(600),
 });
 
 export type LoginForm = z.infer<typeof loginSchema>;

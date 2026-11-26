@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SessionsService } from './sessions.service';
-import { StartSessionDto, StopSessionDto } from './dto/session.dto';
+import { StartSessionDto } from './dto/session.dto';
 import { AuthUser, Can, CurrentUser } from '../common/auth.decorators';
 
 @ApiTags('Charging Sessions')
@@ -24,7 +24,7 @@ export class SessionsController {
 
   @Can('sessions:control')
   @Post(':id/stop')
-  stop(@Param('id', ParseIntPipe) id: number, @Body() dto: StopSessionDto, @CurrentUser() user: AuthUser) {
-    return this.sessions.stop(id, dto.idleMinutes, user);
+  stop(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+    return this.sessions.stop(id, user);
   }
 }

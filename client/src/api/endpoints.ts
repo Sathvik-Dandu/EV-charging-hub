@@ -71,7 +71,7 @@ export const sessionApi = {
   list: (status?: 'ACTIVE' | 'COMPLETED') => get<ChargingSession[]>('/sessions', { status }),
   start: (body: { bookingReference?: string; chargerId?: number; vehicleId?: number }) =>
     post<ChargingSession>('/sessions/start', body),
-  stop: (id: number, idleMinutes: number) => post<ChargingSession>(`/sessions/${id}/stop`, { idleMinutes }),
+  stop: (id: number) => post<ChargingSession>(`/sessions/${id}/stop`),
 };
 
 export const invoiceApi = {

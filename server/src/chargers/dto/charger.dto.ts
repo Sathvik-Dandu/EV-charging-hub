@@ -22,19 +22,12 @@ export class CreateChargerDto {
   @IsInt()
   stationId: number;
 
-  @ApiPropertyOptional({ example: 18, description: 'Needed for the first charger of this type at the station' })
+  @ApiPropertyOptional({ example: 18, description: 'Price per kWh. Needed for the first charger of this type at the station' })
   @IsOptional()
   @IsNumber()
-  @Min(1)
-  @Max(BUSINESS_RULES.MAX_PRICE_PER_KWH)
+  @Min(1, { message: 'Price per kWh must be between ₹1 and ₹100' })
+  @Max(BUSINESS_RULES.MAX_PRICE_PER_KWH, { message: 'Price per kWh must be between ₹1 and ₹100' })
   pricePerKwh?: number;
-
-  @ApiPropertyOptional({ example: 24 })
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  @Max(BUSINESS_RULES.MAX_PRICE_PER_KWH)
-  peakPricePerKwh?: number;
 }
 
 export class ChargerActiveDto {

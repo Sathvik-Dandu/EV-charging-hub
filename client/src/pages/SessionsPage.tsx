@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, TextField, Typography, alpha } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
@@ -11,7 +9,6 @@ import { can } from '../config/permissions';
 import { chargerApi, sessionApi, vehicleApi } from '../api/endpoints';
 import { errorMessage } from '../api/client';
 import type { ChargingSession } from '../api/types';
-import { stopSessionSchema } from '../schemas/forms';
 import { connectorLabel } from '../config/connectors';
 import { brand } from '../theme/palette';
 import { dateTime, kwh, minutesToText, money } from '../utils/format';
@@ -19,7 +16,6 @@ import PageHeader from '../components/common/PageHeader';
 import { useNotify } from '../components/common/Notifier';
 
 const LIVE_REFRESH_MS = 3000;
-const IDLE_GRACE_MINUTES = 10;
 
 export default function SessionsPage() {
   const role = useAppSelector((s) => s.auth.user!.role);
@@ -37,7 +33,6 @@ export default function SessionsPage() {
     { field: 'startedAt', headerName: 'Started', width: 190, valueFormatter: (v) => dateTime(v) },
     { field: 'durationMin', headerName: 'Duration', width: 100, valueFormatter: (v) => minutesToText(v) },
     { field: 'energyKwh', headerName: 'Energy', width: 110, valueFormatter: (v) => kwh(v) },
-    { field: 'idleMinutes', headerName: 'Idle', width: 80, valueFormatter: (v) => `${v}m` },
     { field: 'total', headerName: 'Bill', width: 120, valueGetter: (_, r) => r.invoice?.totalAmount ?? 0, valueFormatter: (v) => money(v) },
   ];
 
@@ -147,12 +142,10 @@ function LiveSessionCard({ session, onStop }: { session: ChargingSession; onStop
 function StopSessionDialog({ session, onClose }: { session: ChargingSession | null; onClose: () => void }) {
   const notify = useNotify();
   const queryClient = useQueryClient();
-  const { register, handleSubmit, formState, watch, reset } = useForm({ resolver: zodResolver(stopSessionSchema), mode: 'onChange', defaultValues: { idleMinutes: '0' } });
   const [result, setResult] = useState<ChargingSession | null>(null);
-  const idle = Number(watch('idleMinutes') || 0);
 
   const mutation = useMutation({
-    mutationFn: (v: { idleMinutes: number }) => sessionApi.stop(session!.id, v.idleMinutes),
+    mutationFn: () => sessionApi.stop(session!.id),
     onSuccess: (s) => {
       setResult(s);
       notify(`Session stopped. Invoice ${s.invoice?.invoiceNo} generated`);
@@ -162,7 +155,6 @@ function StopSessionDialog({ session, onClose }: { session: ChargingSession | nu
 
   const close = () => {
     setResult(null);
-    reset({ idleMinutes: '0' });
     mutation.reset();
     onClose();
   };
@@ -177,9 +169,8 @@ function StopSessionDialog({ session, onClose }: { session: ChargingSession | nu
             <Stack spacing={1}>
               {[
                 ['Energy delivered', kwh(result!.energyKwh)],
-                [`Off-peak energy (${inv.offPeakKwh} kWh)`, money(inv.energyCost)],
-                [`Peak energy (${inv.peakKwh} kWh)`, money(inv.peakCost)],
-                [`Idle fee (${result!.idleMinutes} min)`, money(inv.idleFee)],
+                [`Price per kWh`, money(inv.pricePerKwh)],
+                [`Energy cost`, money(inv.energyCost)],
                 ['GST 18%', money(inv.taxAmount)],
               ].map(([k, v]) => (
                 <Stack key={k} direction="row" sx={{ justifyContent: 'space-between' }}>
@@ -202,29 +193,22 @@ function StopSessionDialog({ session, onClose }: { session: ChargingSession | nu
           </DialogActions>
         </>
       ) : (
-        <Box component="form" onSubmit={handleSubmit((v) => mutation.mutate(v))} noValidate>
+        <>
           <DialogContent dividers>
             <Stack spacing={2}>
               {mutation.isError && <Alert severity="error">{errorMessage(mutation.error)}</Alert>}
               <Typography variant="body2" color="text.secondary">
-                Energy so far: <b>{kwh(session?.energyKwh ?? 0)}</b>. Enter how long the vehicle stayed connected after charging completed.
+                Energy so far: <b>{kwh(session?.energyKwh ?? 0)}</b>. Stopping creates the invoice: energy × price per kWh + 18% GST.
               </Typography>
-              <TextField
-                label="Idle minutes after charge complete"
-                type="number"
-                {...register('idleMinutes')}
-                error={!!formState.errors.idleMinutes}
-                helperText={formState.errors.idleMinutes?.message ?? (idle > IDLE_GRACE_MINUTES ? `Idle fee applies for ${idle - IDLE_GRACE_MINUTES} minute(s)` : `First ${IDLE_GRACE_MINUTES} minutes are free`)}
-              />
             </Stack>
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
             <Button onClick={close}>Cancel</Button>
-            <Button type="submit" variant="contained" color="error" disabled={mutation.isPending}>
+            <Button variant="contained" color="error" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
               Stop session
             </Button>
           </DialogActions>
-        </Box>
+        </>
       )}
     </Dialog>
   );

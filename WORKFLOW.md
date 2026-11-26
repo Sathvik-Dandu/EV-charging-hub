@@ -65,7 +65,7 @@ of the previous page. This fixed "the next user opened on the previous user's pa
 ```
 ADMIN          Account requests (approve station owners and technicians) → Users (roles, deactivate)
                  → Stations (see all, switch off any station or charger)
-STATION_OWNER  sign up → approved → My stations → Add station (peak hours, idle fee)
+STATION_OWNER  sign up → approved → My stations → Add station
                  → Add charger (kW rule per type; first charger of a type asks its price per kWh) → Prices
                  → Bookings / Sessions / Invoices at own stations → start/stop on-site sessions
                  → report faults on own chargers → Help & support
@@ -89,8 +89,8 @@ TECHNICIAN     sign up → approved → My work queue: Start work → Resolve (c
 ## Live updates, background jobs, billing
 - **Live status:** `chargers/charger-status.service.ts` updates the charger, writes `ChargerStatusLog` and emits `charger:status`. `hooks/useRealtime.ts` in the browser refreshes the lists.
 - **No-show:** `bookings.service.ts` schedules BullMQ jobs and `bookings.processor.ts` releases unstarted bookings after 15 minutes.
-- **Prices:** set by the station owner. `Station` holds peak hours and the idle fee; table `Price` holds one price per kWh + peak price per kWh for each charging type at the station.
-- **Billing:** `sessions.service.ts stop()` picks the station's price for the charger's type, then `sessions/billing.ts calculateBill()` splits peak and normal hours minute by minute, adds the idle fee after 10 free minutes, then 18% GST.
+- **Prices:** set by the station owner. Table `Price` holds one price per kWh for each charging type at each station.
+- **Billing:** `sessions.service.ts stop()` picks the station's price for the charger's type, then `sessions/billing.ts calculateBill()` does energy × price + 18% GST.
 
 ---
 
@@ -136,7 +136,7 @@ Try any endpoint at http://localhost:4000/api/docs (click **Authorize** and past
 | 5 No-show release | `bookings.service.ts releaseNoShows()` + `bookings.processor.ts` |
 | 6 Max 2 upcoming | `bookings.service.ts create()` |
 | 7 Booking or walk-in | `sessions.service.ts startFromBooking() / startWalkIn()` |
-| 8 Peak-hour price / 9 Idle fee | `sessions/billing.ts calculateBill()` |
+| 8 Prices per charging type / 9 Bill = kWh × price + GST | `stations.service.ts setPrices()`, `sessions/billing.ts calculateBill()` |
 | 10 Invoice per session | `sessions.service.ts stop()` |
 | 11 Status timestamps | `chargers/charger-status.service.ts` → `ChargerStatusLog` |
 | 12 Admin-only master data | `common/permissions.ts` (`users:manage`, `accounts:approve`); prices are station-owner only (`prices:manage`) |
@@ -150,7 +150,7 @@ Try any endpoint at http://localhost:4000/api/docs (click **Authorize** and past
 | File | Contains |
 |---|---|
 | `.env` / `.env.example` | Port, DB URL, Redis, **JWT secrets**, simulation speed. The API refuses to start if a required line is missing |
-| `prisma/schema.prisma` | All tables: User (+ `approvalStatus`, `organization`), Role, Vehicle, Station (+ `ownerId`, peak hours, idle fee), Charger, Price (per station + charging type), Booking, ChargingSession, Invoice, MaintenanceTicket, Enquiry, ChargerStatusLog, AuditLog |
+| `prisma/schema.prisma` | All tables: User (+ `approvalStatus`, `organization`), Role, Vehicle, Station (+ `ownerId`), Charger, Price (per station + charging type), Booking, ChargingSession, Invoice, MaintenanceTicket, Enquiry, ChargerStatusLog, AuditLog |
 | `prisma/migrations/` | SQL applied in order |
 | `prisma/seed.ts` | Wipes everything, creates 5 roles + 5 demo accounts |
 | `src/main.ts` | Checks `.env`, starts NestJS, `/api` prefix, validation, Swagger |

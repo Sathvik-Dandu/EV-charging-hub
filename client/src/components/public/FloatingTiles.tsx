@@ -68,7 +68,7 @@ function Battery() {
 function Price() {
   return (
     <Box sx={{ p: 1.5 }}>
-      <Typography sx={{ fontSize: 11, color: brand.navySoft, fontWeight: 600 }}>Off-peak</Typography>
+      <Typography sx={{ fontSize: 11, color: brand.navySoft, fontWeight: 600 }}>CCS2 price</Typography>
       <Typography sx={{ fontSize: 20, fontWeight: 700, color: brand.navy }}>₹18 / kWh</Typography>
       <Typography sx={{ fontSize: 11, color: brand.tealDark, fontWeight: 600 }}>No hidden fees</Typography>
     </Box>

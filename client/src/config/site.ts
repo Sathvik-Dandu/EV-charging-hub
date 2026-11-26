@@ -24,6 +24,5 @@ export const LIMITATIONS = [
   'Energy delivered is simulated from charger power and time, not read from a live meter.',
   'Slots can be booked up to 7 days ahead, and each driver can hold at most 2 upcoming bookings.',
   'A booking is released automatically if charging has not started 15 minutes after the slot begins.',
-  'An idle fee applies when a vehicle stays plugged in more than 10 minutes after charging ends.',
   'Bharat AC-001 shares 10 kW across three 3.3 kW guns, so it is slower than Type 2 or DC chargers.',
 ];

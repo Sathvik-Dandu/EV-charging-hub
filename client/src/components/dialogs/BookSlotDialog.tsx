@@ -8,7 +8,7 @@ import { bookingApi, chargerApi, vehicleApi } from '../../api/endpoints';
 import { errorMessage } from '../../api/client';
 import type { Charger, Station } from '../../api/types';
 import { bookingSchema, SLOT_DURATIONS } from '../../schemas/forms';
-import { peakHoursText, priceFor } from '../../utils/prices';
+import { priceFor } from '../../utils/prices';
 import { money, timeOnly } from '../../utils/format';
 import { useNotify } from '../common/Notifier';
 import { connectorLabel } from '../../config/connectors';
@@ -65,11 +65,9 @@ export default function BookSlotDialog({ open, onClose, station, charger }: Prop
   const estimate = useMemo(() => {
     if (!vehicle) return null;
     const energy = Math.min((charger.powerKw * Number(duration) * 0.92) / 60, vehicle.batteryKwh * 0.8);
-    const hour = Number(time?.split(':')[0] ?? 0);
     const price = priceFor(station, charger.connectorType);
     if (!price) return null;
-    const peak = hour >= station.peakStartHour && hour < station.peakEndHour;
-    return { energy, cost: energy * (peak ? price.peakPricePerKwh : price.pricePerKwh) * 1.18, peak, price };
+    return { energy, cost: energy * price.pricePerKwh * 1.18, price };
   }, [vehicle, duration, time, charger, station]);
 
   const mutation = useMutation({
@@ -161,13 +159,13 @@ export default function BookSlotDialog({ open, onClose, station, charger }: Prop
             {estimate && time && (
               <Box sx={{ p: 2, borderRadius: 3, bgcolor: (t) => alpha(t.palette.primary.main, 0.08) }}>
                 <Typography variant="body2" color="text.secondary">
-                  Estimated {estimate.peak ? 'peak' : 'off-peak'} charge
+                  Estimated charge
                 </Typography>
                 <Typography variant="h6">
                   ~{estimate.energy.toFixed(1)} kWh · {money(estimate.cost)}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Prices: {money(estimate.price.pricePerKwh)}/kWh, {money(estimate.price.peakPricePerKwh)}/kWh in peak hours ({peakHoursText(station)}), incl. 18% GST
+                  Price: {money(estimate.price.pricePerKwh)}/kWh, incl. 18% GST
                 </Typography>
               </Box>
             )}

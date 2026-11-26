@@ -10,7 +10,7 @@
 A full-stack platform that connects **EV drivers** with **charging stations**:
 - live charger availability,
 - conflict-free slot booking,
-- transparent per-kWh billing: each station owner sets prices per charging type, with peak and idle pricing,
+- simple per-kWh billing: each station owner sets one price per kWh for each charging type,
 - fault tracking until a charger is repaired,
 - operational reports.
 
@@ -27,8 +27,8 @@ It is built from the *Green Mobility Charge Hub* Business Requirement Document (
   - Prevents double bookings with a database transaction and a Redis lock.
   - Allows at most 2 upcoming bookings per driver.
   - Auto-releases no-shows after 15 minutes (BullMQ job).
-- **Prices set by station owners.** One price per kWh (plus a peak price) for each charging type at each station, with the station's own peak hours and idle fee.
-- **Billing.** Splits energy minute by minute into peak and normal hours, adds the idle fee after 10 free minutes, adds 18% GST, and generates an invoice per session.
+- **Prices set by station owners.** One price per kWh for each charging type at each station.
+- **Billing.** Energy delivered × price per kWh, plus 18% GST. An invoice is generated for every session.
 - **Live updates.** Charger status changes reach every open screen in seconds (Socket.io).
 - **Charger specs enforced:**
   - CCS2 / CHAdeMO ≥ 50 kW,
@@ -44,7 +44,7 @@ It is built from the *Green Mobility Charge Hub* Business Requirement Document (
 |---|---|---|
 | **Administrator** | seeded | Approves or rejects new station owner and technician accounts, manages users and roles, oversees all stations (can switch stations and chargers off) |
 | **EV Owner** | self sign-up (instant) | Adds vehicles, books slots, starts/stops charging, pays invoices, reports faults, asks for help |
-| **Station Owner** | self sign-up → **admin approval** | Adds **own** stations and chargers, **sets the prices** (price per kWh and peak price for each charging type, peak hours, idle fee), sees bookings, sessions and invoices at own stations, runs on-site sessions |
+| **Station Owner** | self sign-up → **admin approval** | Adds **own** stations and chargers, **sets the prices** (one price per kWh for each charging type), sees bookings, sessions and invoices at own stations, runs on-site sessions |
 | **Technician** | self sign-up → **admin approval** | Works on tickets assigned to them: Start work → Resolve (charger back online) |
 | **Operations Manager** | seeded | **Only** role that assigns maintenance and answers enquiries; network reports (utilization, revenue, faults & downtime, bookings) |
 
@@ -137,7 +137,7 @@ The database starts **clean**: no stations. Typical first steps:
 | `npm run install:all` | Installs server and client dependencies |
 | `npm run db:setup` | Applies migrations and seeds the 5 demo accounts |
 | `npm run api` / `npm run web` | Starts the API / website in watch mode |
-| `npm test` | Runs server (19) and client (5) tests |
+| `npm test` | Runs server (16) and client (5) tests |
 | `npm --prefix server run db:seed` | Resets the database to the 5 demo accounts |
 | `npm --prefix server run db:studio` | Opens Prisma Studio to browse tables |
 | `npm --prefix server run db:migrate` | Creates a new migration after editing `schema.prisma` |
@@ -185,8 +185,8 @@ EV-charging-hub/
 5. Auto-cancel after a 15-minute no-show.
 6. Max 2 upcoming bookings.
 7. A session needs a booking or a free walk-in charger.
-8. Peak-hour pricing.
-9. Idle fee after 10 minutes.
+8. One price per kWh per charging type, set by the station owner.
+9. Bill = energy × price + 18% GST.
 10. An invoice for every session.
 11. Every charger status change is timestamped.
 12. Only admins manage users; only station owners set prices.

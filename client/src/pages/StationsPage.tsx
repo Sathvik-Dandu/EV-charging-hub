@@ -33,7 +33,7 @@ import { CONNECTORS, connectorLabel } from '../config/connectors';
 import { can } from '../config/permissions';
 import { chargerStatusColors } from '../theme/palette';
 import { money } from '../utils/format';
-import { peakHoursText, priceFor } from '../utils/prices';
+import { priceFor } from '../utils/prices';
 import PageHeader from '../components/common/PageHeader';
 import StatusChip from '../components/common/StatusChip';
 import BookSlotDialog from '../components/dialogs/BookSlotDialog';
@@ -173,7 +173,7 @@ export default function StationsPage() {
                   <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
                     <ScheduleRounded sx={{ fontSize: 16 }} />
                     <Typography variant="body2">
-                      {station.opensAt === '00:00' && station.closesAt === '23:59' ? 'Open 24 hours' : `${station.opensAt} – ${station.closesAt}`} · Peak {peakHoursText(station)}
+                      {station.opensAt === '00:00' && station.closesAt === '23:59' ? 'Open 24 hours' : `${station.opensAt} – ${station.closesAt}`}
                     </Typography>
                   </Stack>
                   {role === 'ADMIN' && (
