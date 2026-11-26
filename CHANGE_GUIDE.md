@@ -109,6 +109,7 @@ Each charging type at a station has **one price per kWh** (table `Price`). Bill 
 | Save prices (`PUT /api/stations/:id/prices`) | `server/src/stations/stations.service.ts:87` (`setPrices`) | `PricesDialog` in `client/src/components/dialogs/StationDialogs.tsx` |
 | Price asked when adding the first charger of a type | `server/src/chargers/chargers.service.ts:24` (`create`) | `AddChargerDialog` in `StationDialogs.tsx`, rule `client/src/schemas/forms.ts:107` |
 | Which price a bill uses | `server/src/sessions/sessions.service.ts:55` (`stop`: the station's price for the charger's type) | none |
+
 ---
 
 ## C. Charger types
