@@ -173,6 +173,7 @@ EV-charging-hub/
 | [WORKFLOW.md](WORKFLOW.md) | Request flow, screen → API → file map, what every file contains |
 | [CHANGE_GUIDE.md](CHANGE_GUIDE.md) | Exact file and line for common changes (roles, permissions, rules, validation, theme) |
 | [TESTING.md](TESTING.md) | Step-by-step manual test plan for every feature |
+| [supabase/setup.sql](supabase/setup.sql) | SQL to create all tables and demo accounts in the Supabase SQL Editor ([how to](supabase/README.md)) |
 
 ## ✅ BRD business rules
 
