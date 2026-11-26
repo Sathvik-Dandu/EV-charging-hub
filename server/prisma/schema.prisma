@@ -1,0 +1,296 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ConnectorType {
+  CCS2
+  CHADEMO
+  TYPE2
+  BHARAT_DC001
+  BHARAT_AC001
+}
+
+enum ChargerStatus {
+  AVAILABLE
+  RESERVED
+  CHARGING
+  FAULTY
+}
+
+enum BookingStatus {
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum SessionStatus {
+  ACTIVE
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum ApprovalStatus {
+  APPROVED
+  PENDING
+  REJECTED
+}
+
+enum EnquiryCategory {
+  BOOKING
+  BILLING
+  CHARGER
+  ACCOUNT
+  OTHER
+}
+
+enum EnquiryStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String
+  users       User[]
+}
+
+model User {
+  id               Int                 @id @default(autoincrement())
+  fullName         String
+  email            String              @unique
+  phone            String?
+  passwordHash     String
+  refreshTokenHash String?
+  isActive         Boolean             @default(true)
+  approvalStatus   ApprovalStatus      @default(APPROVED)
+  rejectionReason  String?
+  organization     String?
+  roleId           Int
+  role             Role                @relation(fields: [roleId], references: [id])
+  vehicles         Vehicle[]
+  bookings         Booking[]
+  reportedTickets  MaintenanceTicket[] @relation("ReportedBy")
+  assignedTickets  MaintenanceTicket[] @relation("AssignedTo")
+  ownedStations    Station[]           @relation("StationOwner")
+  enquiries        Enquiry[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+model Vehicle {
+  id              Int              @id @default(autoincrement())
+  registrationNo  String           @unique
+  make            String
+  model           String
+  connectorType   ConnectorType
+  batteryKwh      Float
+  ownerId         Int
+  owner           User             @relation(fields: [ownerId], references: [id])
+  bookings        Booking[]
+  sessions        ChargingSession[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model Station {
+  id         Int       @id @default(autoincrement())
+  code       String    @unique
+  name       String
+  address    String
+  city       String
+  latitude   Float
+  longitude  Float
+  opensAt    String    @default("00:00")
+  closesAt   String    @default("23:59")
+  isActive   Boolean   @default(true)
+  tariffId   Int
+  tariff     Tariff    @relation(fields: [tariffId], references: [id])
+  ownerId    Int?
+  owner      User?     @relation("StationOwner", fields: [ownerId], references: [id])
+  chargers   Charger[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([city])
+}
+
+model Charger {
+  id            Int                 @id @default(autoincrement())
+  code          String              @unique
+  connectorType ConnectorType
+  powerKw       Float
+  status        ChargerStatus       @default(AVAILABLE)
+  isActive      Boolean             @default(true)
+  stationId     Int
+  station       Station             @relation(fields: [stationId], references: [id])
+  bookings      Booking[]
+  sessions      ChargingSession[]
+  tickets       MaintenanceTicket[]
+  statusLogs    ChargerStatusLog[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([stationId, status])
+}
+
+model ChargerStatusLog {
+  id         Int           @id @default(autoincrement())
+  chargerId  Int
+  charger    Charger       @relation(fields: [chargerId], references: [id])
+  fromStatus ChargerStatus?
+  toStatus   ChargerStatus
+  reason     String
+  changedAt  DateTime      @default(now())
+
+  @@index([chargerId, changedAt])
+}
+
+model Tariff {
+  id              Int       @id @default(autoincrement())
+  name            String    @unique
+  energyRate      Float
+  peakRate        Float
+  peakStartHour   Int
+  peakEndHour     Int
+  idleFeePerMin   Float
+  isActive        Boolean   @default(true)
+  stations        Station[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Booking {
+  id           Int              @id @default(autoincrement())
+  reference    String           @unique
+  userId       Int
+  user         User             @relation(fields: [userId], references: [id])
+  vehicleId    Int
+  vehicle      Vehicle          @relation(fields: [vehicleId], references: [id])
+  chargerId    Int
+  charger      Charger          @relation(fields: [chargerId], references: [id])
+  startTime    DateTime
+  endTime      DateTime
+  status       BookingStatus    @default(CONFIRMED)
+  cancelReason String?
+  session      ChargingSession?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([chargerId, startTime, endTime])
+  @@index([userId, status])
+}
+
+model ChargingSession {
+  id              Int           @id @default(autoincrement())
+  bookingId       Int?          @unique
+  booking         Booking?      @relation(fields: [bookingId], references: [id])
+  chargerId       Int
+  charger         Charger       @relation(fields: [chargerId], references: [id])
+  vehicleId       Int
+  vehicle         Vehicle       @relation(fields: [vehicleId], references: [id])
+  startedAt       DateTime      @default(now())
+  endedAt         DateTime?
+  energyKwh       Float         @default(0)
+  durationMin     Int           @default(0)
+  idleMinutes     Int           @default(0)
+  status          SessionStatus @default(ACTIVE)
+  invoice         Invoice?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([chargerId, status])
+}
+
+model Invoice {
+  id            Int             @id @default(autoincrement())
+  invoiceNo     String          @unique
+  sessionId     Int             @unique
+  session       ChargingSession @relation(fields: [sessionId], references: [id])
+  offPeakKwh    Float
+  peakKwh       Float
+  energyCost    Float
+  peakCost      Float
+  idleFee       Float
+  taxAmount     Float
+  totalAmount   Float
+  paymentStatus PaymentStatus   @default(PENDING)
+  paymentRef    String?
+  paidAt        DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model MaintenanceTicket {
+  id           Int            @id @default(autoincrement())
+  ticketNo     String         @unique
+  chargerId    Int
+  charger      Charger        @relation(fields: [chargerId], references: [id])
+  title        String
+  description  String
+  priority     TicketPriority @default(MEDIUM)
+  status       TicketStatus   @default(OPEN)
+  reportedById Int
+  reportedBy   User           @relation("ReportedBy", fields: [reportedById], references: [id])
+  assignedToId Int?
+  assignedTo   User?          @relation("AssignedTo", fields: [assignedToId], references: [id])
+  resolution   String?
+  resolvedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([status])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  action    String
+  entity    String
+  entityId  String
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+}
+
+model Enquiry {
+  id        Int             @id @default(autoincrement())
+  userId    Int
+  user      User            @relation(fields: [userId], references: [id])
+  category  EnquiryCategory
+  subject   String
+  message   String
+  status    EnquiryStatus   @default(NEW)
+  reply     String?
+  repliedAt DateTime?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([status])
+}

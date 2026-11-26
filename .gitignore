@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.log
+.env
+server/src/generated/
+client/node_modules/.tmp/
+*.tsbuildinfo
+.vite/
+coverage/
+.claude/
+.env.*
+!.env.example
